@@ -786,13 +786,9 @@ final class LoopDataManager {
         let velocityUnit = glucoseUnit.unitDivided(by: HKUnit.second())
 
         let current_discrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
-        var discrepancy = current_discrepancy
-        if current_discrepancy < 0 {
-            IntegralActionDiscrepancy = 0
-        } else {
-            IntegralActionDiscrepancy = current_discrepancy + 0.5 * IntegralActionDiscrepancy
-            discrepancy = IntegralActionDiscrepancy
-        }
+        IntegralActionDiscrepancy = IntegralActionDiscrepancy + 0.1 * current_discrepancy
+        IntegralActionDiscrepancy = min(max(IntegralActionDiscrepancy, -50), 50)
+        let discrepancy = current_discrepancy + IntegralActionDiscrepancy
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
         let glucose = HKQuantitySample(type: type, quantity: change.end.quantity, start: change.end.startDate, end: change.end.endDate)
