@@ -18,6 +18,7 @@ func InitializeIntegralActionDiscrepancy() -> Double
     return 0
 }
 var IntegralActionDiscrepancy = InitializeIntegralActionDiscrepancy()
+var PreviousDiscrepancy = InitializeIntegralActionDiscrepancy()
 
 final class LoopDataManager {
     enum LoopUpdateContext: Int {
@@ -785,10 +786,19 @@ final class LoopDataManager {
         let glucoseUnit = HKUnit.milligramsPerDeciliter()
         let velocityUnit = glucoseUnit.unitDivided(by: HKUnit.second())
 
+        let integral_gain_parameter = 0.2
+        var integral_gain = integral_gain_parameter
         let current_discrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
-        IntegralActionDiscrepancy = IntegralActionDiscrepancy + 0.042 * current_discrepancy
-        IntegralActionDiscrepancy = min(max(IntegralActionDiscrepancy, -25), 50)
-        let discrepancy = current_discrepancy + IntegralActionDiscrepancy
+        if (PreviousDiscrepancy*current_discrepancy < 0){
+            integral_gain = 0
+            IntegralActionDiscrepancy = 0
+        } else {
+            integral_gain = integral_gain_parameter
+            IntegralActionDiscrepancy = IntegralActionDiscrepancy + integral_gain * current_discrepancy
+            IntegralActionDiscrepancy = min(max(IntegralActionDiscrepancy, -25), 50)
+        }
+        PreviousDiscrepancy = current_discrepancy
+        let discrepancy = (1-integral_gain) * current_discrepancy + IntegralActionDiscrepancy
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
         let glucose = HKQuantitySample(type: type, quantity: change.end.quantity, start: change.end.startDate, end: change.end.endDate)
