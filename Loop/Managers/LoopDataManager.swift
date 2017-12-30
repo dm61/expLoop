@@ -787,18 +787,22 @@ final class LoopDataManager {
         let velocityUnit = glucoseUnit.unitDivided(by: HKUnit.second())
 
         let integral_gain_parameter = 0.2
+        let proportional_gain_parameter = 1.0
         var integral_gain = integral_gain_parameter
+        let current_bg = change.end.quantity.doubleValue(for: glucoseUnit)
         let current_discrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
-        if (PreviousDiscrepancy*current_discrepancy < 0){
+        if (PreviousDiscrepancy * current_discrepancy < 0){
             integral_gain = 0
             IntegralActionDiscrepancy = 0
         } else {
-            integral_gain = integral_gain_parameter
+            integral_gain = integral_gain_parameter * min(1,abs(current_bg - 85.0)/15.0)
             IntegralActionDiscrepancy = IntegralActionDiscrepancy + integral_gain * current_discrepancy
-            IntegralActionDiscrepancy = min(max(IntegralActionDiscrepancy, -25), 50)
+            IntegralActionDiscrepancy = min(max(IntegralActionDiscrepancy, -25.0), 50.0)
         }
         PreviousDiscrepancy = current_discrepancy
-        let discrepancy = (1-integral_gain) * current_discrepancy + IntegralActionDiscrepancy
+
+        let discrepancy = proportional_gain_parameter * current_discrepancy + IntegralActionDiscrepancy
+        
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
         let glucose = HKQuantitySample(type: type, quantity: change.end.quantity, start: change.end.startDate, end: change.end.endDate)
