@@ -6,12 +6,15 @@
 //  Copyright © 2016 Nathan Racklyeft. All rights reserved.
 //
 
+import UIKit
+
 import Foundation
 import CarbKit
 import GlucoseKit
 import HealthKit
 import InsulinKit
 import LoopKit
+
 
 func InitializeIntegralActionDiscrepancy() -> Double
 {
@@ -788,6 +791,7 @@ final class LoopDataManager {
 
         let integral_gain_parameter = 0.2
         let proportional_gain_parameter = 1.0
+        let integral_forget = 0.99
         var integral_gain = integral_gain_parameter
         let current_bg = change.end.quantity.doubleValue(for: glucoseUnit)
         let current_discrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
@@ -796,12 +800,15 @@ final class LoopDataManager {
             IntegralActionDiscrepancy = 0
         } else {
             integral_gain = integral_gain_parameter * min(1,abs(current_bg - 85.0)/15.0)
-            IntegralActionDiscrepancy = IntegralActionDiscrepancy + integral_gain * current_discrepancy
+            IntegralActionDiscrepancy = integral_forget * IntegralActionDiscrepancy + integral_gain * current_discrepancy
             IntegralActionDiscrepancy = min(max(IntegralActionDiscrepancy, -25.0), 50.0)
         }
         PreviousDiscrepancy = current_discrepancy
-
+        
         let discrepancy = proportional_gain_parameter * current_discrepancy + IntegralActionDiscrepancy
+        NSLog("myLoop Current BG: %f", current_bg)
+        NSLog("myLoop Integral RC: %f", IntegralActionDiscrepancy)
+        NSLog("myLoop Overall RC: %f", discrepancy)
         
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
