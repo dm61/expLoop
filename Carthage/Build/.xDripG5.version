@@ -1,18 +1,9 @@
 {
-  "Mac" : [
-
-  ],
-  "watchOS" : [
-
-  ],
-  "tvOS" : [
-
-  ],
   "commitish" : "v0.8.1",
   "iOS" : [
     {
       "name" : "xDripG5",
-      "hash" : "ba09e9c5440f4e1ecc80415292e9e7a75b43a3d0801ff3e8650252de2abc352d"
+      "hash" : "8b70d9666f491e54687c33783bd7d2c87df1ad122759ce3b543d1a48f0afe81a"
     }
   ]
 }
