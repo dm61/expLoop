@@ -1,0 +1,234 @@
+BCSymbolMap Version: 2.0
+-[RileyLinkBLEDevice initWithPeripheral:]
+-[RileyLinkBLEDevice init]
+-[RileyLinkBLEDevice setPeripheral:]
+-[RileyLinkBLEDevice name]
+-[RileyLinkBLEDevice peripheralId]
+-[RileyLinkBLEDevice setTimerTickEnabled:]
+-[RileyLinkBLEDevice runSessionWithName:usingBlock:]
+___52-[RileyLinkBLEDevice runSessionWithName:usingBlock:]_block_invoke
+___copy_helper_block_
+___destroy_helper_block_
+___52-[RileyLinkBLEDevice runSessionWithName:usingBlock:]_block_invoke.47
+___copy_helper_block_.52
+___destroy_helper_block_.53
+-[RileyLinkBLEDevice doCmd:withTimeoutMs:]
+-[RileyLinkBLEDevice issueCommand:]
+-[RileyLinkBLEDevice peripheral:didWriteValueForCharacteristic:error:]
+-[RileyLinkBLEDevice state]
+-[RileyLinkBLEDevice connectionStateDidChange:]
+-[RileyLinkBLEDevice setCharacteristicsFromService:]
+-[RileyLinkBLEDevice peripheral:didDiscoverServices:]
+-[RileyLinkBLEDevice peripheral:didReadRSSI:error:]
+-[RileyLinkBLEDevice peripheral:didDiscoverCharacteristicsForService:error:]
+-[RileyLinkBLEDevice peripheralDidUpdateName:]
+-[RileyLinkBLEDevice checkVersion]
+___34-[RileyLinkBLEDevice checkVersion]_block_invoke
+___copy_helper_block_.164
+___destroy_helper_block_.165
+-[RileyLinkBLEDevice firmwareStateForVersionString:]
+-[RileyLinkBLEDevice firmwareState]
+-[RileyLinkBLEDevice peripheral:didUpdateValueForCharacteristic:error:]
+-[RileyLinkBLEDevice dataReceivedFromRL:]
+-[RileyLinkBLEDevice peripheral:didUpdateNotificationStateForCharacteristic:error:]
+-[RileyLinkBLEDevice cleanup]
+-[RileyLinkBLEDevice deviceURI]
+-[RileyLinkBLEDevice setCustomName:]
+-[RileyLinkBLEDevice onIdle]
+-[RileyLinkBLEDevice enableIdleListeningOnChannel:]
+-[RileyLinkBLEDevice disableIdleListening]
+-[RileyLinkBLEDevice assertIdleListeningForcingRestart:]
+-[RileyLinkBLEDevice handleIdleListenerResponse:error:]
+-[RileyLinkBLEDevice peripheral]
+-[RileyLinkBLEDevice lastIdle]
+-[RileyLinkBLEDevice firmwareVersion]
+-[RileyLinkBLEDevice bleFirmwareVersion]
+-[RileyLinkBLEDevice RSSI]
+-[RileyLinkBLEDevice setRSSI:]
+-[RileyLinkBLEDevice timerTickEnabled]
+-[RileyLinkBLEDevice idleTimeoutMS]
+-[RileyLinkBLEDevice setIdleTimeoutMS:]
+-[RileyLinkBLEDevice serialDispatchQueue]
+-[RileyLinkBLEDevice setSerialDispatchQueue:]
+-[RileyLinkBLEDevice .cxx_destruct]
+-[RileyLinkCmdSession doCmd:withTimeoutMs:]
+-[RileyLinkCmdSession device]
+-[RileyLinkCmdSession setDevice:]
+-[RileyLinkCmdSession .cxx_destruct]
+_OBJC_IVAR_$_RileyLinkBLEDevice._serialDispatchQueue
+_OBJC_IVAR_$_RileyLinkBLEDevice.cmdDispatchGroup
+_OBJC_IVAR_$_RileyLinkBLEDevice.idleDetectDispatchGroup
+_OBJC_IVAR_$_RileyLinkBLEDevice._idleTimeoutMS
+_OBJC_IVAR_$_RileyLinkBLEDevice._timerTickEnabled
+_OBJC_IVAR_$_RileyLinkBLEDevice.incomingPackets
+_OBJC_IVAR_$_RileyLinkBLEDevice.inBuf
+_OBJC_IVAR_$_RileyLinkBLEDevice.endOfResponseMarker
+_OBJC_IVAR_$_RileyLinkBLEDevice._peripheral
+_OBJC_IVAR_$_RileyLinkBLEDevice.timerTickCharacteristic
+_OBJC_IVAR_$_RileyLinkBLEDevice.runningSession
+___block_descriptor_tmp
+___block_descriptor_tmp.54
+_OBJC_IVAR_$_RileyLinkBLEDevice.currentCommand
+_OBJC_IVAR_$_RileyLinkBLEDevice.dataCharacteristic
+_OBJC_IVAR_$_RileyLinkBLEDevice.customNameCharacteristic
+_OBJC_IVAR_$_RileyLinkBLEDevice.runningIdle
+_OBJC_IVAR_$_RileyLinkBLEDevice.responseCountCharacteristic
+_OBJC_IVAR_$_RileyLinkBLEDevice.firmwareVersionCharacteristic
+_OBJC_IVAR_$_RileyLinkBLEDevice._firmwareVersion
+_OBJC_IVAR_$_RileyLinkBLEDevice.ready
+___block_descriptor_tmp.167
+_OBJC_IVAR_$_RileyLinkBLEDevice.haveResponseCount
+_OBJC_IVAR_$_RileyLinkBLEDevice._bleFirmwareVersion
+_OBJC_IVAR_$_RileyLinkBLEDevice.idleListeningEnabled
+_OBJC_IVAR_$_RileyLinkBLEDevice.idleListenChannel
+_OBJC_IVAR_$_RileyLinkBLEDevice._lastIdle
+_OBJC_IVAR_$_RileyLinkBLEDevice._RSSI
+l_OBJC_PROTOCOL_$_NSObject
+l_OBJC_LABEL_PROTOCOL_$_NSObject
+l_OBJC_PROTOCOL_$_CBPeripheralDelegate
+l_OBJC_LABEL_PROTOCOL_$_CBPeripheralDelegate
+_OBJC_IVAR_$_RileyLinkBLEDevice.fetchingResponse
+_OBJC_IVAR_$_RileyLinkCmdSession._device
+Apple LLVM version 9.0.0 (clang-900.0.39.2)
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/RileyLinkBLEDevice.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/RileyLinkBLEDevice.h
+__destroy_helper_block_
+__copy_helper_block_
+__34-[RileyLinkBLEDevice checkVersion]_block_invoke
+__52-[RileyLinkBLEDevice runSessionWithName:usingBlock:]_block_invoke.47
+__52-[RileyLinkBLEDevice runSessionWithName:usingBlock:]_block_invoke
+-[NSData(Conversion) hexadecimalString]
++[NSData(Conversion) dataWithHexadecimalString:]
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLink/Extensions/NSData+Conversion.m
+-[GetPacketCmd data]
+-[GetPacketCmd listenChannel]
+-[GetPacketCmd setListenChannel:]
+-[GetPacketCmd timeoutMS]
+-[GetPacketCmd setTimeoutMS:]
+_OBJC_IVAR_$_GetPacketCmd._listenChannel
+_OBJC_IVAR_$_GetPacketCmd._timeoutMS
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/GetPacketCmd.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/GetPacketCmd.h
++[RFPacket computeCRC8:]
+-[RFPacket init]
+-[RFPacket initWithData:]
+-[RFPacket initWithRFSPYResponse:]
+-[RFPacket encodedData]
+-[RFPacket decodeRF:]
+-[RFPacket data]
+-[RFPacket setData:]
+-[RFPacket capturedAt]
+-[RFPacket setCapturedAt:]
+-[RFPacket rssi]
+-[RFPacket setRssi:]
+-[RFPacket packetNumber]
+-[RFPacket setPacketNumber:]
+-[RFPacket .cxx_destruct]
+_crcTable
+_OBJC_IVAR_$_RFPacket._data
+_OBJC_IVAR_$_RFPacket._capturedAt
+_OBJC_IVAR_$_RFPacket._rssi
+_OBJC_IVAR_$_RFPacket._packetNumber
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/RFPacket.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/RFPacket.h
+-[CmdBase data]
+-[CmdBase response]
+-[CmdBase setResponse:]
+-[CmdBase .cxx_destruct]
+_OBJC_IVAR_$_CmdBase._response
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/CmdBase.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/CmdBase.h
++[RileyLinkBLEManager UUIDsFromUUIDStrings:excludingAttributes:]
+-[RileyLinkBLEManager initWithAutoConnectIDs:]
+-[RileyLinkBLEManager rileyLinkList]
+-[RileyLinkBLEManager addPeripheralToDeviceList:RSSI:]
+-[RileyLinkBLEManager setScanningEnabled:]
+-[RileyLinkBLEManager addPeripheralToAutoConnectList:]
+-[RileyLinkBLEManager removePeripheralFromAutoConnectList:]
+-[RileyLinkBLEManager hasDiscoveredAllAutoConnectPeripherals]
+-[RileyLinkBLEManager startScan]
+-[RileyLinkBLEManager connectDevice:]
+-[RileyLinkBLEManager connectPeripheral:]
+-[RileyLinkBLEManager disconnectDevice:]
+-[RileyLinkBLEManager disconnectPeripheral:]
+-[RileyLinkBLEManager attemptReconnectForDisconnectedDevices]
+-[RileyLinkBLEManager centralManager:willRestoreState:]
+-[RileyLinkBLEManager centralManagerDidUpdateState:]
+-[RileyLinkBLEManager centralManager:didDiscoverPeripheral:advertisementData:RSSI:]
+-[RileyLinkBLEManager centralManager:didFailToConnectPeripheral:error:]
+-[RileyLinkBLEManager centralManager:didConnectPeripheral:]
+-[RileyLinkBLEManager centralManager:didDisconnectPeripheral:error:]
+-[RileyLinkBLEManager autoConnectIDs]
+-[RileyLinkBLEManager centralManager]
+-[RileyLinkBLEManager setCentralManager:]
+-[RileyLinkBLEManager .cxx_destruct]
+_OBJC_IVAR_$_RileyLinkBLEManager._centralManager
+_OBJC_IVAR_$_RileyLinkBLEManager._devicesById
+_OBJC_IVAR_$_RileyLinkBLEManager._autoConnectIDs
+_OBJC_IVAR_$_RileyLinkBLEManager._scanningEnabled
+l_OBJC_PROTOCOL_$_CBCentralManagerDelegate
+l_OBJC_LABEL_PROTOCOL_$_CBCentralManagerDelegate
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/RileyLinkBLEManager.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/RileyLinkBLEManager.h
+-[SendAndListenCmd data]
+-[SendAndListenCmd packet]
+-[SendAndListenCmd setPacket:]
+-[SendAndListenCmd sendChannel]
+-[SendAndListenCmd setSendChannel:]
+-[SendAndListenCmd repeatCount]
+-[SendAndListenCmd setRepeatCount:]
+-[SendAndListenCmd msBetweenPackets]
+-[SendAndListenCmd setMsBetweenPackets:]
+-[SendAndListenCmd listenChannel]
+-[SendAndListenCmd setListenChannel:]
+-[SendAndListenCmd timeoutMS]
+-[SendAndListenCmd setTimeoutMS:]
+-[SendAndListenCmd retryCount]
+-[SendAndListenCmd setRetryCount:]
+-[SendAndListenCmd .cxx_destruct]
+_OBJC_IVAR_$_SendAndListenCmd._sendChannel
+_OBJC_IVAR_$_SendAndListenCmd._repeatCount
+_OBJC_IVAR_$_SendAndListenCmd._msBetweenPackets
+_OBJC_IVAR_$_SendAndListenCmd._listenChannel
+_OBJC_IVAR_$_SendAndListenCmd._timeoutMS
+_OBJC_IVAR_$_SendAndListenCmd._retryCount
+_OBJC_IVAR_$_SendAndListenCmd._packet
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/SendAndListenCmd.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/SendAndListenCmd.h
+-[GetVersionCmd data]
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/GetVersionCmd.m
+-[SendPacketCmd data]
+-[SendPacketCmd packet]
+-[SendPacketCmd setPacket:]
+-[SendPacketCmd sendChannel]
+-[SendPacketCmd setSendChannel:]
+-[SendPacketCmd repeatCount]
+-[SendPacketCmd setRepeatCount:]
+-[SendPacketCmd msBetweenPackets]
+-[SendPacketCmd setMsBetweenPackets:]
+-[SendPacketCmd .cxx_destruct]
+_OBJC_IVAR_$_SendPacketCmd._sendChannel
+_OBJC_IVAR_$_SendPacketCmd._repeatCount
+_OBJC_IVAR_$_SendPacketCmd._msBetweenPackets
+_OBJC_IVAR_$_SendPacketCmd._packet
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/SendPacketCmd.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/SendPacketCmd.h
+-[UpdateRegisterCmd data]
+-[UpdateRegisterCmd addr]
+-[UpdateRegisterCmd setAddr:]
+-[UpdateRegisterCmd value]
+-[UpdateRegisterCmd setValue:]
+_OBJC_IVAR_$_UpdateRegisterCmd._addr
+_OBJC_IVAR_$_UpdateRegisterCmd._value
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/UpdateRegisterCmd.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/UpdateRegisterCmd.h
+-[ReceivingPacketCmd receivedPacket]
+-[ReceivingPacketCmd didReceiveResponse]
+-[ReceivingPacketCmd rawReceivedData]
+-[ReceivingPacketCmd setReceivedPacket:]
+-[ReceivingPacketCmd .cxx_destruct]
+_OBJC_IVAR_$_ReceivingPacketCmd._receivedPacket
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/ReceivingPacketCmd.m
+/Users/Dragan/Downloads/Loop-experiments/Carthage/Checkouts/rileylink_ios/RileyLinkBLEKit/ReceivingPacketCmd.h
+/Users/Dragan/Library/Caches/org.carthage.CarthageKit/DerivedData/9.2_9C40b/rileylink_ios/v1.2.2/Build/Intermediates.noindex/ArchiveIntermediates/RileyLinkBLEKit/IntermediateBuildFilesPath/RileyLink.build/Release-iphoneos/RileyLinkBLEKit.build/DerivedSources/RileyLinkBLEKit_vers.c
