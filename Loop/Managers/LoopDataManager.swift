@@ -791,16 +791,18 @@ final class LoopDataManager {
 
         let integralGainParameter = 0.2
         let proportionalGainParameter = 1.0
-        let integralForget = 1.0
+        let integralForget = 0.98
         var integralGain = integralGainParameter
         let currentBG = change.end.quantity.doubleValue(for: glucoseUnit)
-        let integralActionLimit = min(65.0, max(5.0, abs(currentBG - 85.0)))
+        /* let integralActionLimit = min(65.0, max(5.0, abs(currentBG - 85.0))) */
+        let integralActionLimit = 65.0 /* safety limit for integral action, set to ISF */
         let currentDiscrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
         if (previousDiscrepancy * currentDiscrepancy < 0){
             integralGain = 0
             integralActionDiscrepancy = 0
         } else {
-            integralGain = integralGainParameter * min(1, abs(currentBG - 85.0) / 15.0)
+            /* integralGain = integralGainParameter * min(1, abs(currentBG - 85.0) / 15.0) */
+            integralGain = integralGainParameter
             integralActionDiscrepancy = integralForget * integralActionDiscrepancy + integralGain * currentDiscrepancy
             integralActionDiscrepancy = min(max(integralActionDiscrepancy, -integralActionLimit), integralActionLimit)
         }
@@ -808,6 +810,7 @@ final class LoopDataManager {
         let discrepancy = proportionalGainParameter * currentDiscrepancy + integralActionDiscrepancy
         
         NSLog("myLoop Current BG: %f", currentBG)
+        NSLog("myLoop Current RC: %f", currentDiscrepancy)
         NSLog("myLoop Integral RC: %f", integralActionDiscrepancy)
         NSLog("myLoop Int gain: %f", integralGain)
         NSLog("myLoop Int limit: %f", integralActionLimit)
