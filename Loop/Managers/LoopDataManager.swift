@@ -16,12 +16,12 @@ import InsulinKit
 import LoopKit
 
 
-func InitializeIntegralActionDiscrepancy() -> Double
+func initializeIntegralAction() -> Double
 {
     return 0
 }
-var integralActionDiscrepancy = InitializeIntegralActionDiscrepancy()
-var previousDiscrepancy = InitializeIntegralActionDiscrepancy()
+var integralActionDiscrepancy = initializeIntegralAction()
+var previousDiscrepancy = initializeIntegralAction()
 
 final class LoopDataManager {
     enum LoopUpdateContext: Int {
@@ -772,6 +772,9 @@ final class LoopDataManager {
 
         guard let change = retrospectiveGlucoseChange else {
             self.retrospectivePredictedGlucose = nil
+            // calibration? reset integral action variables
+            integralActionDiscrepancy = 0
+            previousDiscrepancy = 0
             return  // Expected case for calibrations
         }
 
@@ -788,32 +791,38 @@ final class LoopDataManager {
         guard let lastGlucose = retrospectivePrediction.last else { return }
         let glucoseUnit = HKUnit.milligramsPerDeciliter()
         let velocityUnit = glucoseUnit.unitDivided(by: HKUnit.second())
-
-        let integralGainParameter = 0.2
-        let proportionalGainParameter = 1.0
-        let integralForget = 0.98
-        var integralGain = integralGainParameter
-        let currentBG = change.end.quantity.doubleValue(for: glucoseUnit)
-        /* let integralActionLimit = min(65.0, max(5.0, abs(currentBG - 85.0))) */
-        let integralActionLimit = 65.0 /* safety limit for integral action, set to ISF */
-        let currentDiscrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
-        if (previousDiscrepancy * currentDiscrepancy < 0){
-            integralGain = 0
-            integralActionDiscrepancy = 0
-        } else {
-            /* integralGain = integralGainParameter * min(1, abs(currentBG - 85.0) / 15.0) */
-            integralGain = integralGainParameter
-            integralActionDiscrepancy = integralForget * integralActionDiscrepancy + integralGain * currentDiscrepancy
-            integralActionDiscrepancy = min(max(integralActionDiscrepancy, -integralActionLimit), integralActionLimit)
-        }
-        previousDiscrepancy = currentDiscrepancy
-        let discrepancy = proportionalGainParameter * currentDiscrepancy + integralActionDiscrepancy
         
+        // retrospective correction parameters
+        let integralGain = 0.2
+        let proportionalGain = 1.0
+        let integralActionGainLimit = 10.0
+        let integralForget = 1.0 - integralGain / integralActionGainLimit
+        
+        let currentBG = change.end.quantity.doubleValue(for: glucoseUnit)
+        let integralActionPositiveLimit = 65.0 // safety limit for + integral action: ISF * (2 hours) * min(basal rate)
+        let integralActionNegativeLimit = -15.0 // safety limit for - integral action: suspend threshold - target
+        
+        let currentDiscrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
+        
+        if (previousDiscrepancy * currentDiscrepancy < 0){
+            // reset integral action discrepancy when discrepancy reverses polarity
+            integralActionDiscrepancy = 0
+            previousDiscrepancy = 0
+        } else {
+            // update integral action discrepancy
+            integralActionDiscrepancy = integralForget * integralActionDiscrepancy + integralGain * currentDiscrepancy
+            integralActionDiscrepancy = min(max(integralActionDiscrepancy, integralActionNegativeLimit), integralActionPositiveLimit)
+            previousDiscrepancy = currentDiscrepancy
+        }
+        
+        // retrospective correction including integral action
+        let discrepancy = proportionalGain * currentDiscrepancy + integralActionDiscrepancy
+        
+        // debugging
         NSLog("myLoop Current BG: %f", currentBG)
         NSLog("myLoop Current RC: %f", currentDiscrepancy)
         NSLog("myLoop Integral RC: %f", integralActionDiscrepancy)
         NSLog("myLoop Int gain: %f", integralGain)
-        NSLog("myLoop Int limit: %f", integralActionLimit)
         NSLog("myLoop Overall RC: %f", discrepancy)
         
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
