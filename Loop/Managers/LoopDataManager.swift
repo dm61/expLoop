@@ -775,12 +775,16 @@ final class LoopDataManager {
             self.retrospectivePredictedGlucose = nil
             throw LoopError.missingDataError(details: "Cannot retrospect glucose due to missing input data", recovery: nil)
         }
+        
+        var dynamicEffectDuration: TimeInterval = effectDuration
 
         guard let change = retrospectiveGlucoseChange else {
             self.retrospectivePredictedGlucose = nil
             // calibration? reset integral action variables
             integralActionDiscrepancy = 0
             previousDiscrepancy = 0
+            integralActionMinutes = 60
+            dynamicEffectDuration = effectDuration
             return  // Expected case for calibrations
         }
 
@@ -791,8 +795,6 @@ final class LoopDataManager {
             carbEffect.filterDateRange(startDate, endDate),
             insulinEffect.filterDateRange(startDate, endDate)
         )
-
-        var dynamicEffectDuration: TimeInterval = effectDuration
         
         self.retrospectivePredictedGlucose = retrospectivePrediction
 
