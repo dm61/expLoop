@@ -23,6 +23,12 @@ func initializeIntegralAction() -> Double
 var integralActionDiscrepancy = initializeIntegralAction()
 var previousDiscrepancy = initializeIntegralAction()
 
+func initializeIntegralActionMinutes() -> Double
+{
+    return 60
+}
+var integralActionMinutes = initializeIntegralActionMinutes()
+
 final class LoopDataManager {
     enum LoopUpdateContext: Int {
         case bolus
@@ -786,6 +792,8 @@ final class LoopDataManager {
             insulinEffect.filterDateRange(startDate, endDate)
         )
 
+        var dynamicEffectDuration: TimeInterval = effectDuration
+        
         self.retrospectivePredictedGlucose = retrospectivePrediction
 
         guard let lastGlucose = retrospectivePrediction.last else { return }
@@ -808,28 +816,36 @@ final class LoopDataManager {
             // reset integral action discrepancy when discrepancy reverses polarity
             integralActionDiscrepancy = 0
             previousDiscrepancy = 0
+            // reset duration of retrospective correction to 60 min
+            integralActionMinutes = 60
+            dynamicEffectDuration = effectDuration
         } else {
             // update integral action discrepancy
             integralActionDiscrepancy = integralForget * integralActionDiscrepancy + integralGain * currentDiscrepancy
             integralActionDiscrepancy = min(max(integralActionDiscrepancy, integralActionNegativeLimit), integralActionPositiveLimit)
             previousDiscrepancy = currentDiscrepancy
+            // extend duration of retrospective correction effect by 10 min, up to a maxium of 180 min
+            integralActionMinutes = min(integralActionMinutes + 10.0, 180)
+            dynamicEffectDuration = TimeInterval(minutes: integralActionMinutes)
         }
         
         // retrospective correction including integral action
-        let discrepancy = proportionalGain * currentDiscrepancy + integralActionDiscrepancy
+        let overallRC = proportionalGain * currentDiscrepancy + integralActionDiscrepancy
+        let discrepancy = overallRC * 60.0 / integralActionMinutes // scale due to extended effect duration
         
         // debugging
         NSLog("myLoop Current BG: %f", currentBG)
         NSLog("myLoop Current RC: %f", currentDiscrepancy)
         NSLog("myLoop Integral RC: %f", integralActionDiscrepancy)
         NSLog("myLoop Int gain: %f", integralGain)
-        NSLog("myLoop Overall RC: %f", discrepancy)
+        NSLog("myLoop Int minutes: %f", integralActionMinutes)
+        NSLog("myLoop Overall RC: %f", overallRC)
         
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
         let glucose = HKQuantitySample(type: type, quantity: change.end.quantity, start: change.end.startDate, end: change.end.endDate)
 
-        self.retrospectiveGlucoseEffect = LoopMath.decayEffect(from: glucose, atRate: velocity, for: effectDuration)
+        self.retrospectiveGlucoseEffect = LoopMath.decayEffect(from: glucose, atRate: velocity, for: dynamicEffectDuration)
     }
 
     /// Measure the effects counteracting insulin observed in the CGM glucose.
