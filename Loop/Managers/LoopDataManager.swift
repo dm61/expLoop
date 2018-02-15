@@ -759,6 +759,19 @@ final class LoopDataManager {
             }
         }
     }
+    
+    /**
+     try to code integralRetrospectiveCorrection better
+     */
+    struct integralRetrospectiveCorrection {
+        static var effectDuration: Double = 60
+        static var previousDiscrepancy: Double = 0
+        static var integralActionDiscrepancy: Double = 0
+        func updateIntegralRetrospectiveCorrection(discrepancy: Double) -> Double {
+            integralRetrospectiveCorrection.integralActionDiscrepancy = integralRetrospectiveCorrection.integralActionDiscrepancy + 0.1 * discrepancy
+            return integralRetrospectiveCorrection.integralActionDiscrepancy
+        }
+    }
 
     /**
      Runs the glucose retrospective analysis using the latest effect data.
@@ -768,6 +781,10 @@ final class LoopDataManager {
     private func updateRetrospectiveGlucoseEffect(effectDuration: TimeInterval = TimeInterval(minutes: 60)) throws {
         dispatchPrecondition(condition: .onQueue(dataAccessQueue))
 
+        // testing of the integralRetrospectiveCorrection
+        let integralRC = integralRetrospectiveCorrection()
+        let count = integralRC.updateIntegralRetrospectiveCorrection(discrepancy: 10)
+        
         guard
             let carbEffect = self.carbEffect,
             let insulinEffect = self.insulinEffect
@@ -777,7 +794,7 @@ final class LoopDataManager {
         }
         
         var dynamicEffectDuration: TimeInterval = effectDuration
-
+        
         guard let change = retrospectiveGlucoseChange else {
             self.retrospectivePredictedGlucose = nil
             // calibration? reset integral action variables
@@ -801,6 +818,20 @@ final class LoopDataManager {
         guard let lastGlucose = retrospectivePrediction.last else { return }
         let glucoseUnit = HKUnit.milligramsPerDeciliter()
         let velocityUnit = glucoseUnit.unitDivided(by: HKUnit.second())
+  
+        // get user settings
+        guard let
+            glucoseTargetRange = settings.glucoseTargetRangeSchedule,
+            let insulinSensitivity = insulinSensitivitySchedule,
+            let basalRates = basalRateSchedule,
+            let suspendThreshold = settings.suspendThreshold?.quantity,
+            let currentBG = glucoseStore.latestGlucose?.quantity.doubleValue(for: glucoseUnit)
+            else { return }
+        let date = Date()
+        let currentSensitivity = insulinSensitivity.quantity(at: date).doubleValue(for: glucoseUnit)
+        let currentBasalRate = basalRates.value(at: date)
+        let currentMinTarget = glucoseTargetRange.minQuantity(at: date).doubleValue(for: glucoseUnit)
+        let currentSuspendThreshold = suspendThreshold.doubleValue(for: glucoseUnit)
         
         // retrospective correction parameters
         let integralGain = 0.2
@@ -808,9 +839,10 @@ final class LoopDataManager {
         let integralActionGainLimit = 10.0
         let integralForget = 1.0 - integralGain / integralActionGainLimit
         
-        let currentBG = change.end.quantity.doubleValue(for: glucoseUnit)
-        let integralActionPositiveLimit = 65.0 // safety limit for + integral action: ISF * (2 hours) * min(basal rate)
-        let integralActionNegativeLimit = -15.0 // safety limit for - integral action: suspend threshold - target
+        // safety limit for + integral action: ISF * (2 hours) * (basal rate)
+        let integralActionPositiveLimit = currentSensitivity * 2 * currentBasalRate
+        // safety limit for - integral action: suspend threshold - target
+        let integralActionNegativeLimit = min(-15,-abs(currentMinTarget - currentSuspendThreshold))
         
         let currentDiscrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
         
@@ -840,8 +872,16 @@ final class LoopDataManager {
         NSLog("myLoop Current RC: %f", currentDiscrepancy)
         NSLog("myLoop Integral RC: %f", integralActionDiscrepancy)
         NSLog("myLoop Int gain: %f", integralGain)
-        NSLog("myLoop Int minutes: %f", integralActionMinutes)
+        NSLog("myLoop Action duration: %f", integralActionMinutes)
         NSLog("myLoop Overall RC: %f", overallRC)
+        NSLog("myLoop current sensitivity: %f", currentSensitivity)
+        NSLog("myLoop current basal rate: %f", currentBasalRate)
+        NSLog("myLoop current min target: %f", currentMinTarget)
+        NSLog("myLoop current suspend: %f", currentSuspendThreshold)
+        NSLog("myLoop +limit: %f", integralActionPositiveLimit)
+        NSLog("myLoop -limit: %f", integralActionNegativeLimit)
+        NSLog("myLoop count: %f", count)
+        NSLog("myLoop -------------------")
         
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
