@@ -758,6 +758,7 @@ final class LoopDataManager {
         static var effectDuration: Double = 60
         static var previousDiscrepancy: Double = 0
         static var integralActionDiscrepancy: Double = 0
+        static var cummulativeDiscrepancy: Double = 0
         
         init() {
             integralGain = 0.2 // must be between 0 and 1, recommended 0.05 (weak) to 0.5 (strong)
@@ -789,6 +790,10 @@ final class LoopDataManager {
             integralRetrospectiveCorrection.previousDiscrepancy = 0
             integralRetrospectiveCorrection.integralActionDiscrepancy = 0
             return
+        }
+        func updateCummulativeDiscrepancy(discrepancy: Double) -> Double {
+            integralRetrospectiveCorrection.cummulativeDiscrepancy = integralRetrospectiveCorrection.cummulativeDiscrepancy + discrepancy
+            return(integralRetrospectiveCorrection.cummulativeDiscrepancy)
         }
     }
 
@@ -827,7 +832,7 @@ final class LoopDataManager {
             carbEffect.filterDateRange(startDate, endDate),
             insulinEffect.filterDateRange(startDate, endDate)
         )
-        
+ 
         self.retrospectivePredictedGlucose = retrospectivePrediction
 
         guard let lastGlucose = retrospectivePrediction.last else { return }
@@ -865,6 +870,8 @@ final class LoopDataManager {
             negativeLimit: integralActionNegativeLimit
         )
         
+        let cummulativeDiscrepancy = integralRC.updateCummulativeDiscrepancy(discrepancy: currentDiscrepancy)
+        
         let integralActionMinutes = integralRC.integralEffectDuration()
         dynamicEffectDuration = TimeInterval(minutes: integralActionMinutes)
         
@@ -885,6 +892,7 @@ final class LoopDataManager {
         NSLog("myLoop Integral discrepancy: %f", integralActionDiscrepancy)
         NSLog("myLoop Overall discrepancy: %f", overallRC)
         NSLog("myLoop Effect duration: %f", integralActionMinutes)
+        NSLog("myLoop Cummulative discrepancy: %f", cummulativeDiscrepancy)
         NSLog("myLoop -------------------")
     }
 
