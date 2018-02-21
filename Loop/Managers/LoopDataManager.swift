@@ -746,57 +746,100 @@ final class LoopDataManager {
         }
     }
     
+    
     /**
-     Integral retrospective correction math
+     Sensitivity tracking filter
      **/
-    struct integralRetrospectiveCorrection {
+    struct sensitivityFilter {
         
-        let integralGain: Double
-        let integralLimit: Double
-        let integralForget: Double
+        let sensitivityTime: Double
+        let sensitivityGain: Double
         
-        static var effectDuration: Double = 60
-        static var previousDiscrepancy: Double = 0
-        static var integralActionDiscrepancy: Double = 0
         static var cummulativeDiscrepancy: Double = 0
+        static var cummulativeInsulinOnlyEffect: Double = 0
+        static var updateCounter: Int = 0
         
         init() {
-            integralGain = 0.2 // must be between 0 and 1, recommended 0.05 (weak) to 0.5 (strong)
-            integralLimit = 10.0 // must be greater than 1, recommended 5 (conservative) to 20 (more agressive)
-            integralForget = 1 - integralGain / integralLimit
-        }
-        func updateIntegralRetrospectiveCorrection(discrepancy: Double, positiveLimit: Double, negativeLimit: Double) -> Double {
-            if (integralRetrospectiveCorrection.previousDiscrepancy * discrepancy < 0){
-                // reset integral action when discrepancy reverses polarity
-                integralRetrospectiveCorrection.effectDuration = 60
-                integralRetrospectiveCorrection.previousDiscrepancy = 0
-                integralRetrospectiveCorrection.integralActionDiscrepancy = 0
-            } else {
-                // update integral action y[n] = a y[n-1] + b u[n]
-                integralRetrospectiveCorrection.integralActionDiscrepancy = integralForget * integralRetrospectiveCorrection.integralActionDiscrepancy + integralGain * discrepancy
-                // impose safety limits on integral retrospective correction
-                integralRetrospectiveCorrection.integralActionDiscrepancy = min(max(integralRetrospectiveCorrection.integralActionDiscrepancy, negativeLimit), positiveLimit)
-                integralRetrospectiveCorrection.previousDiscrepancy = discrepancy
-                // extend duration of retrospective correction effect by 10 min, up to a maxium of 180 min
-                integralRetrospectiveCorrection.effectDuration = min(integralRetrospectiveCorrection.effectDuration + 10, 180)
-            }
-            return(integralRetrospectiveCorrection.integralActionDiscrepancy)
-        }
-        func integralEffectDuration() -> Double {
-            return(integralRetrospectiveCorrection.effectDuration)
-        }
-        func resetIntegralRetrospectiveCorrection() {
-            integralRetrospectiveCorrection.effectDuration = 60
-            integralRetrospectiveCorrection.previousDiscrepancy = 0
-            integralRetrospectiveCorrection.integralActionDiscrepancy = 0
-            return
+            sensitivityTime = 24 * 60 / 5 // time span for sensitivty adjustments = 24 hours
+            sensitivityGain = 1 / sensitivityTime
         }
         func updateCummulativeDiscrepancy(discrepancy: Double) -> Double {
-            integralRetrospectiveCorrection.cummulativeDiscrepancy = integralRetrospectiveCorrection.cummulativeDiscrepancy + discrepancy
-            return(integralRetrospectiveCorrection.cummulativeDiscrepancy)
+            sensitivityFilter.cummulativeDiscrepancy =
+                (1 - sensitivityGain) * sensitivityFilter.cummulativeDiscrepancy +
+                sensitivityGain * discrepancy
+            return(sensitivityFilter.cummulativeDiscrepancy)
+        }
+        func updateCummulativeInsulinOnlyEffect(delta: Double) -> Double {
+            sensitivityFilter.cummulativeInsulinOnlyEffect =
+                (1 - sensitivityGain) * sensitivityFilter.cummulativeInsulinOnlyEffect +
+                sensitivityGain * delta
+            return(sensitivityFilter.cummulativeInsulinOnlyEffect)
+        }
+        func updateCount() -> Int {
+            sensitivityFilter.updateCounter += 1
+            return(sensitivityFilter.updateCounter)
         }
     }
-
+    
+    
+    /**
+     Retrospective correction math, including proportional and integral action
+     **/
+    struct retrospectiveCorrection {
+        
+        let discrepancyGain: Double
+        let persistentDiscrepancyGain: Double
+        let correctionTimeConstant: Double
+        let integralGain: Double
+        let integralForget: Double
+        let proportionalGain: Double
+        
+        static var effectDuration: Double = 50
+        static var previousDiscrepancy: Double = 0
+        static var integralDiscrepancy: Double = 0
+        
+        init() {
+            discrepancyGain = 1.0 // high-frequency RC gain, equivalent to Loop 1.5 gain = 1
+            persistentDiscrepancyGain = 3.0 // low-frequency RC gain for persistent errors, must be >= 1
+            correctionTimeConstant = 60 // correction filter time constant in minutes
+            let sampleTime: Double = 5.0 // sample time = 5 min
+            integralForget = exp( -sampleTime / correctionTimeConstant ) // must be between 0 and 1
+            integralGain = ((1 - integralForget) / integralForget) *
+                (persistentDiscrepancyGain - discrepancyGain)
+            proportionalGain = discrepancyGain - integralGain
+        }
+        func updateRetrospectiveCorrection(discrepancy: Double, positiveLimit: Double, negativeLimit: Double) -> Double {
+            if (retrospectiveCorrection.previousDiscrepancy * discrepancy < 0){
+                // reset integral action when discrepancy reverses polarity
+                retrospectiveCorrection.effectDuration = 60
+                retrospectiveCorrection.previousDiscrepancy = 0
+                retrospectiveCorrection.integralDiscrepancy = integralGain * discrepancy
+            } else {
+                // update integral action y[n] = a y[n-1] + b u[n]
+                retrospectiveCorrection.integralDiscrepancy =
+                    integralForget * retrospectiveCorrection.integralDiscrepancy +
+                    integralGain * discrepancy
+                // impose safety limits on integral retrospective correction
+                retrospectiveCorrection.integralDiscrepancy = min(max(retrospectiveCorrection.integralDiscrepancy, negativeLimit), positiveLimit)
+                retrospectiveCorrection.previousDiscrepancy = discrepancy
+                // extend duration of retrospective correction effect by 10 min, up to a maxium of 180 min
+                retrospectiveCorrection.effectDuration =
+                    min(retrospectiveCorrection.effectDuration + 10, 180)
+            }
+            let overallDiscrepancy = proportionalGain * discrepancy + retrospectiveCorrection.integralDiscrepancy
+            return(overallDiscrepancy)
+        }
+        func updateEffectDuration() -> Double {
+            return(retrospectiveCorrection.effectDuration)
+        }
+        func resetRetrospectiveCorrection() {
+            retrospectiveCorrection.effectDuration = 50
+            retrospectiveCorrection.previousDiscrepancy = 0
+            retrospectiveCorrection.integralDiscrepancy = 0
+            return
+        }
+    }
+    
     /**
      Runs the glucose retrospective analysis using the latest effect data.
  
@@ -814,12 +857,13 @@ final class LoopDataManager {
         }
         
         var dynamicEffectDuration: TimeInterval = effectDuration
-        let integralRC = integralRetrospectiveCorrection()
+        let RC = retrospectiveCorrection()
+        let sensitivity = sensitivityFilter()
         
         guard let change = retrospectiveGlucoseChange else {
             self.retrospectivePredictedGlucose = nil
             // calibration? reset integral action variables
-            integralRC.resetIntegralRetrospectiveCorrection()
+            RC.resetRetrospectiveCorrection()
             dynamicEffectDuration = effectDuration
             NSLog("myLoop --- suspected calibration event, no retrospective correction")
             return  // Expected case for calibrations
@@ -838,7 +882,7 @@ final class LoopDataManager {
         guard let lastGlucose = retrospectivePrediction.last else { return }
         let glucoseUnit = HKUnit.milligramsPerDeciliter()
         let velocityUnit = glucoseUnit.unitDivided(by: HKUnit.second())
-  
+        
         // get user settings
         guard let
             glucoseTargetRange = settings.glucoseTargetRangeSchedule,
@@ -847,7 +891,7 @@ final class LoopDataManager {
             let suspendThreshold = settings.suspendThreshold?.quantity,
             let currentBG = glucoseStore.latestGlucose?.quantity.doubleValue(for: glucoseUnit)
             else {
-                integralRC.resetIntegralRetrospectiveCorrection()
+                RC.resetRetrospectiveCorrection()
                 NSLog("myLoop --- could not get settings, no retrospective correction")
                 return
         }
@@ -862,38 +906,73 @@ final class LoopDataManager {
         // safety limit for - integral action: suspend threshold - target
         let integralActionNegativeLimit = min(-15,-abs(currentMinTarget - currentSuspendThreshold))
         
-        let currentDiscrepancy = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
+        let discrepancyLimit = integralActionPositiveLimit
+        let currentDiscrepancyUnlimited = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
+        let currentDiscrepancy = min(max(currentDiscrepancyUnlimited, -discrepancyLimit), discrepancyLimit)
         
-        let integralActionDiscrepancy = integralRC.updateIntegralRetrospectiveCorrection(
+        let overallRC = RC.updateRetrospectiveCorrection(
             discrepancy: currentDiscrepancy,
             positiveLimit: integralActionPositiveLimit,
             negativeLimit: integralActionNegativeLimit
         )
         
-        let cummulativeDiscrepancy = integralRC.updateCummulativeDiscrepancy(discrepancy: currentDiscrepancy)
-        
-        let integralActionMinutes = integralRC.integralEffectDuration()
-        dynamicEffectDuration = TimeInterval(minutes: integralActionMinutes)
+        let effectMinutes = RC.updateEffectDuration()
+        dynamicEffectDuration = TimeInterval(minutes: effectMinutes)
         
         // retrospective correction including integral action
-        let overallRC = currentDiscrepancy + integralActionDiscrepancy
-        let discrepancy = overallRC * 60.0 / integralActionMinutes // scale to extended effect duration
+        let discrepancy = overallRC * 60.0 / effectMinutes // extended effect duration scale
         
         let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
         let glucose = HKQuantitySample(type: type, quantity: change.end.quantity, start: change.end.startDate, end: change.end.endDate)
         self.retrospectiveGlucoseEffect = LoopMath.decayEffect(from: glucose, atRate: velocity, for: dynamicEffectDuration)
+  
+        // sensitivity
+        let retrospectiveCarbOnlyPrediction = LoopMath.predictGlucose(change.start, effects:
+            carbEffect.filterDateRange(startDate, endDate))
+        guard let lastCarbOnlyGlucose = retrospectiveCarbOnlyPrediction.last else { return }
+        let currentCarbOnlyDelta = -change.start.quantity.doubleValue(for: glucoseUnit) + lastCarbOnlyGlucose.quantity.doubleValue(for: glucoseUnit)
+        
+        let retrospectiveInsulinOnlyPrediction = LoopMath.predictGlucose(change.start, effects:
+            insulinEffect.filterDateRange(startDate, endDate))
+        guard let lastInsulinOnlyGlucose = retrospectiveInsulinOnlyPrediction.last else { return }
+        let currentInsulinOnlyDelta = change.start.quantity.doubleValue(for: glucoseUnit) - lastInsulinOnlyGlucose.quantity.doubleValue(for: glucoseUnit)
+        let cummulativeInsulinOnlyEffect = sensitivity.updateCummulativeInsulinOnlyEffect(delta: currentInsulinOnlyDelta)
+        
+        // allocate portion of current discrepancy to insulin sensitivity, the rest could be allocated to carb ratio
+        var currentInsulinDiscrepancy = currentDiscrepancy
+        if (currentInsulinOnlyDelta + currentCarbOnlyDelta) > 0 {
+            currentInsulinDiscrepancy = currentDiscrepancy *
+                currentInsulinOnlyDelta / (currentInsulinOnlyDelta + currentCarbOnlyDelta)
+        }
+        let cummulativeDiscrepancy = sensitivity.updateCummulativeDiscrepancy(discrepancy: currentInsulinDiscrepancy)
+        
+        var sensitivityMultiplier : Double = 1.0
+        if cummulativeInsulinOnlyEffect > 0 {
+            sensitivityMultiplier = 1.0 - cummulativeDiscrepancy / cummulativeInsulinOnlyEffect
+        }
+        
+        let count = sensitivity.updateCount()
+        
+        let currentDeltaBG = change.end.quantity.doubleValue(for: glucoseUnit) -
+            change.start.quantity.doubleValue(for: glucoseUnit)// mg/dL
         
         // debugging
+        NSLog("myLoop ---retrospective correction---")
         NSLog("myLoop Current BG: %f", currentBG)
+        NSLog("myLoop 30-min delta BG: %f", currentDeltaBG)
+        NSLog("myLoop Insulin-only delta: %f", -currentInsulinOnlyDelta)
+        NSLog("myLoop Carb-only delta: %f", currentCarbOnlyDelta)
         NSLog("myLoop Current discrepancy: %f", currentDiscrepancy)
         NSLog("myLoop +Integral limit: %f", integralActionPositiveLimit)
         NSLog("myLoop -Integral limit: %f", integralActionNegativeLimit)
-        NSLog("myLoop Integral discrepancy: %f", integralActionDiscrepancy)
-        NSLog("myLoop Overall discrepancy: %f", overallRC)
-        NSLog("myLoop Effect duration: %f", integralActionMinutes)
+        NSLog("myLoop Retrospective correction: %f", overallRC)
+        NSLog("myLoop Correction effect duration: %f", effectMinutes)
+        NSLog("myLoop ---sensitivity------")
         NSLog("myLoop Cummulative discrepancy: %f", cummulativeDiscrepancy)
-        NSLog("myLoop -------------------")
+        NSLog("myLoop Cummulative insulin only: %f", cummulativeInsulinOnlyEffect)
+        NSLog("myLoop Estimated sensitivity multiplier: %f", sensitivityMultiplier)
+        NSLog("myLoop Count: %i", count)
     }
 
     /// Measure the effects counteracting insulin observed in the CGM glucose.
