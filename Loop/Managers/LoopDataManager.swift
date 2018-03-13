@@ -748,9 +748,9 @@ final class LoopDataManager {
     
     
     /**
-     Tuning filter
+     Parameter estimation filter
      **/
-    struct tuningFilter {
+    struct estimationFilter {
         
         let insulinSensitivityGain: Double
         let carbSensitivityGain: Double
@@ -765,78 +765,83 @@ final class LoopDataManager {
         static var cummulativeBasalDiscrepancy: Double = 0
         static var cummulativeUnmodeledUpEffect: Double = 0
         static var cummulativeUnmodeledDownEffect: Double = 0
-        static var cummulativeDiscrepancy: Double = 0
+        static var cummulativeUpDiscrepancy: Double = 0
+        static var cummulativeDownDiscrepancy: Double = 0
         static var updateCounter: Int = 0
         
         init() {
-            insulinSensitivityGain = 1 / (6 * 60 / 5) // time span for insulin sensitivity tuning, 6 hours
-            carbSensitivityGain = 1 / (6 * 60 / 5) // time span for carb sensitivity tuning, 6 hours
+            insulinSensitivityGain = 1 / (8 * 60 / 5) // time span for insulin sensitivity tuning, 8 hours
+            carbSensitivityGain = 1 / (8 * 60 / 5) // time span for carb sensitivity tuning, 8 hours
             basalGain = 1 / (2 * 60 / 5) // time span for basal tuning, 2 hours
-            unmodeledGain = 1 / (1 * 60 / 5) // time span for unmodeled +/-bg effects, 1 hour
+            unmodeledGain = 1 / (2 * 60 / 5) // time span for unmodeled +/-bg effects, 2 hours
         }
         func updateInsulinSensitivityMultiplier(effect: Double, discrepancy: Double) -> Double {
-            tuningFilter.cummulativeInsulinEffect =
-                (1 - insulinSensitivityGain) * tuningFilter.cummulativeInsulinEffect +
+            estimationFilter.cummulativeInsulinEffect =
+                (1 - insulinSensitivityGain) * estimationFilter.cummulativeInsulinEffect +
                 insulinSensitivityGain * effect
-            tuningFilter.cummulativeInsulinDiscrepancy =
-                (1 - insulinSensitivityGain) * tuningFilter.cummulativeInsulinDiscrepancy +
+            estimationFilter.cummulativeInsulinDiscrepancy =
+                (1 - insulinSensitivityGain) * estimationFilter.cummulativeInsulinDiscrepancy +
                 insulinSensitivityGain * discrepancy
             var insulinSensitivityFactor: Double = 1.0
-            if(tuningFilter.cummulativeInsulinEffect != 0) {
+            if(estimationFilter.cummulativeInsulinEffect != 0) {
                 insulinSensitivityFactor = 1.0 +
-                    tuningFilter.cummulativeInsulinDiscrepancy / tuningFilter.cummulativeInsulinEffect
+                    estimationFilter.cummulativeInsulinDiscrepancy / estimationFilter.cummulativeInsulinEffect
             }
             return(insulinSensitivityFactor)
         }
         func updateCarbSensitivityMultiplier(effect: Double, discrepancy: Double) -> Double {
-            tuningFilter.cummulativeCarbEffect =
-                (1 - carbSensitivityGain) * tuningFilter.cummulativeCarbEffect + carbSensitivityGain * effect
-            tuningFilter.cummulativeCarbDiscrepancy =
-                (1 - carbSensitivityGain) * tuningFilter.cummulativeCarbDiscrepancy + carbSensitivityGain * discrepancy
+            estimationFilter.cummulativeCarbEffect =
+                (1 - carbSensitivityGain) * estimationFilter.cummulativeCarbEffect + carbSensitivityGain * effect
+            estimationFilter.cummulativeCarbDiscrepancy =
+                (1 - carbSensitivityGain) * estimationFilter.cummulativeCarbDiscrepancy + carbSensitivityGain * discrepancy
             var carbSensitivityMultiplier: Double = 1.0
-            if(tuningFilter.cummulativeCarbEffect != 0) {
+            if(estimationFilter.cummulativeCarbEffect != 0) {
                 carbSensitivityMultiplier = 1.0 +
-                    tuningFilter.cummulativeCarbDiscrepancy / tuningFilter.cummulativeCarbEffect
+                    estimationFilter.cummulativeCarbDiscrepancy / estimationFilter.cummulativeCarbEffect
             }
             return(carbSensitivityMultiplier)
         }
         func updateBasalMultiplier(effect: Double, discrepancy: Double) -> Double {
-            tuningFilter.cummulativeBasalEffect =
-                (1 - basalGain) * tuningFilter.cummulativeBasalEffect + basalGain * effect
-            tuningFilter.cummulativeBasalDiscrepancy =
-                (1 - basalGain) * tuningFilter.cummulativeBasalDiscrepancy + basalGain * discrepancy
+            estimationFilter.cummulativeBasalEffect =
+                (1 - basalGain) * estimationFilter.cummulativeBasalEffect + basalGain * effect
+            estimationFilter.cummulativeBasalDiscrepancy =
+                (1 - basalGain) * estimationFilter.cummulativeBasalDiscrepancy + basalGain * discrepancy
             var basalMultiplier: Double = 1.0
-            if(tuningFilter.cummulativeBasalEffect != 0) {
+            if(estimationFilter.cummulativeBasalEffect != 0) {
                 basalMultiplier = 1.0 -
-                    tuningFilter.cummulativeBasalDiscrepancy / tuningFilter.cummulativeBasalEffect
+                    estimationFilter.cummulativeBasalDiscrepancy / estimationFilter.cummulativeBasalEffect
             }
             return(basalMultiplier)
         }
         func updateUnmodeledUpPercentage(effect: Double, discrepancy: Double) -> Double {
-            tuningFilter.cummulativeUnmodeledUpEffect =
-                (1 - unmodeledGain) * tuningFilter.cummulativeUnmodeledUpEffect + unmodeledGain * discrepancy
-            tuningFilter.cummulativeDiscrepancy =
-                (1 - unmodeledGain) * tuningFilter.cummulativeDiscrepancy + unmodeledGain * effect
+            estimationFilter.cummulativeUnmodeledUpEffect =
+                (1 - unmodeledGain) * estimationFilter.cummulativeUnmodeledUpEffect + unmodeledGain * discrepancy
+            if(effect > 0) {
+                estimationFilter.cummulativeUpDiscrepancy =
+                (1 - unmodeledGain) * estimationFilter.cummulativeUpDiscrepancy + unmodeledGain * effect
+            }
             var unmodeledUpPercentage: Double = 0.0
-            if(tuningFilter.cummulativeDiscrepancy != 0){
-                unmodeledUpPercentage = 100 * tuningFilter.cummulativeUnmodeledUpEffect / tuningFilter.cummulativeDiscrepancy
+            if(estimationFilter.cummulativeUpDiscrepancy != 0){
+                unmodeledUpPercentage = 100 * estimationFilter.cummulativeUnmodeledUpEffect / estimationFilter.cummulativeUpDiscrepancy
             }
             return(unmodeledUpPercentage)
         }
         func updateUnmodeledDownPercentage(effect: Double, discrepancy: Double) -> Double {
-            tuningFilter.cummulativeUnmodeledDownEffect =
-                (1 - unmodeledGain) * tuningFilter.cummulativeUnmodeledDownEffect + unmodeledGain * discrepancy
-            tuningFilter.cummulativeDiscrepancy =
-                (1 - unmodeledGain) * tuningFilter.cummulativeDiscrepancy + unmodeledGain * effect
+            estimationFilter.cummulativeUnmodeledDownEffect =
+                (1 - unmodeledGain) * estimationFilter.cummulativeUnmodeledDownEffect + unmodeledGain * discrepancy
+            if(effect < 0) {
+                estimationFilter.cummulativeDownDiscrepancy =
+                (1 - unmodeledGain) * estimationFilter.cummulativeDownDiscrepancy + unmodeledGain * effect
+            }
             var unmodeledDownPercentage: Double = 0.0
-            if(tuningFilter.cummulativeDiscrepancy != 0){
-                unmodeledDownPercentage = 100 * tuningFilter.cummulativeUnmodeledDownEffect / tuningFilter.cummulativeDiscrepancy
+            if(estimationFilter.cummulativeDownDiscrepancy != 0){
+                unmodeledDownPercentage = 100 * estimationFilter.cummulativeUnmodeledDownEffect / estimationFilter.cummulativeDownDiscrepancy
             }
             return(unmodeledDownPercentage)
         }
         func updateCount() -> Int {
-            tuningFilter.updateCounter += 1
-            return(tuningFilter.updateCounter)
+            estimationFilter.updateCounter += 1
+            return(estimationFilter.updateCounter)
         }
     }
     
@@ -987,7 +992,7 @@ final class LoopDataManager {
         NSLog("myLoop ===========================")
 
         // tuning work
-        let tuning = tuningFilter()
+        let estimate = estimationFilter()
         let parameterTolerance: Double = 0.2 // expected tolerance in ISF, CSF, basal rates
         let basalEffect: Double = -currentBasalRate * currentSensitivity * 0.5 // < 0
         let basalMaxDiscrepancy: Double = -basalEffect * parameterTolerance // > 0
@@ -1053,13 +1058,13 @@ final class LoopDataManager {
         let unmodeledUpDiscrepancy = unmodeledUpWeight * currentDiscrepancy
         let unmodeledDownDiscrepancy = unmodeledDownWeight * currentDiscrepancy
         
-        let insulinSensitivityMultiplier = tuning.updateInsulinSensitivityMultiplier(effect: currentInsulinEffect, discrepancy: insulinDiscrepancy)
-        let carbSensitivityMultiplier = tuning.updateCarbSensitivityMultiplier(effect: currentCarbEffect, discrepancy: carbDiscrepancy)
-        let basalMultiplier = tuning.updateBasalMultiplier(effect: basalEffect, discrepancy: basalDiscrepancy)
-        let unmodeledUpPercentage = tuning.updateUnmodeledUpPercentage(effect: currentDiscrepancy, discrepancy: unmodeledUpDiscrepancy)
-        let unmodeledDownPercentage = tuning.updateUnmodeledDownPercentage(effect: currentDiscrepancy, discrepancy: unmodeledDownDiscrepancy)
+        let insulinSensitivityMultiplier = estimate.updateInsulinSensitivityMultiplier(effect: currentInsulinEffect, discrepancy: insulinDiscrepancy)
+        let carbSensitivityMultiplier = estimate.updateCarbSensitivityMultiplier(effect: currentCarbEffect, discrepancy: carbDiscrepancy)
+        let basalMultiplier = estimate.updateBasalMultiplier(effect: basalEffect, discrepancy: basalDiscrepancy)
+        let unmodeledUpPercentage = estimate.updateUnmodeledUpPercentage(effect: currentDiscrepancy, discrepancy: unmodeledUpDiscrepancy)
+        let unmodeledDownPercentage = estimate.updateUnmodeledDownPercentage(effect: currentDiscrepancy, discrepancy: unmodeledDownDiscrepancy)
         
-        let count = tuning.updateCount()
+        let count = estimate.updateCount()
         
         let currentDeltaBG = change.end.quantity.doubleValue(for: glucoseUnit) -
             change.start.quantity.doubleValue(for: glucoseUnit)// mg/dL
@@ -1075,13 +1080,20 @@ final class LoopDataManager {
         NSLog("myLoop -Integral limit: %f", integralActionNegativeLimit)
         NSLog("myLoop Retrospective correction: %f", overallRC)
         NSLog("myLoop Correction effect duration: %f", effectMinutes)
-        NSLog("myLoop ---tuning------")
+        NSLog("myLoop ---parameter estimation------")
         NSLog("myLoop Insulin sensitivity multiplier: %f", insulinSensitivityMultiplier)
         NSLog("myLoop Carb sensitivity multiplier: %f", carbSensitivityMultiplier)
         NSLog("myLoop Basal multiplier: %f", basalMultiplier)
+        NSLog("myLoop unmodeled +BG discrepancy: %f", unmodeledUpDiscrepancy)
+        NSLog("myLoop unmodeled -BG discrepancy: %f", unmodeledDownDiscrepancy)
+        NSLog("myLoop insulin sensitivity weight: %f", insulinSensitivityWeight)
+        NSLog("myLoop basal weight: %f", basalWeight)
+        NSLog("myLoop carb sensitivity weight: %f", carbSensitivityWeight)
+        NSLog("myLoop unmodeled +BG weight: %f", unmodeledUpWeight)
+        NSLog("myLoop unmodeled -BG weight: %f", unmodeledDownWeight)
         NSLog("myLoop Cummulative unmodeled +BG percentage: %f", unmodeledUpPercentage)
         NSLog("myLoop Cummulative unmodeled -BG percentage: %f", unmodeledDownPercentage)
-        NSLog("myLoop Tuning cycles: %i", count)
+        NSLog("myLoop Parameter estimation cycles: %i", count)
     }
 
     /// Measure the effects counteracting insulin observed in the CGM glucose.
