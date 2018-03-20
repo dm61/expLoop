@@ -856,6 +856,7 @@ final class LoopDataManager {
         let integralGain: Double
         let integralForget: Double
         let proportionalGain: Double
+        let carbEffectLimit: Double
         
         static var effectDuration: Double = 50
         static var previousDiscrepancy: Double = 0
@@ -863,17 +864,23 @@ final class LoopDataManager {
         
         init() {
             discrepancyGain = 1.0 // high-frequency RC gain, equivalent to Loop 1.5 gain = 1
-            persistentDiscrepancyGain = 3.0 // low-frequency RC gain for persistent errors, must be >= discrepancyGain
+            persistentDiscrepancyGain = 5.0 // low-frequency RC gain for persistent errors, must be >= discrepancyGain
             correctionTimeConstant = 90.0 // correction filter time constant in minutes
+            carbEffectLimit = 30.0 // reset integral RC if carbEffect over past 30 min is greater than carbEffectLimit
             let sampleTime: Double = 5.0 // sample time = 5 min
             integralForget = exp( -sampleTime / correctionTimeConstant ) // must be between 0 and 1
             integralGain = ((1 - integralForget) / integralForget) *
                 (persistentDiscrepancyGain - discrepancyGain)
             proportionalGain = discrepancyGain - integralGain
         }
-        func updateRetrospectiveCorrection(discrepancy: Double, positiveLimit: Double, negativeLimit: Double) -> Double {
-            if (retrospectiveCorrection.previousDiscrepancy * discrepancy < 0){
-                // reset integral action when discrepancy reverses polarity
+        func updateRetrospectiveCorrection(discrepancy: Double,
+                                           positiveLimit: Double,
+                                           negativeLimit: Double,
+                                           carbEffect: Double) -> Double {
+            if (retrospectiveCorrection.previousDiscrepancy * discrepancy < 0 ||
+                (discrepancy > 0 && carbEffect > carbEffectLimit)){
+                // reset integral action when discrepancy reverses polarity or
+                // if discrepancy is positive and carb effect is significant
                 retrospectiveCorrection.effectDuration = 60
                 retrospectiveCorrection.previousDiscrepancy = 0
                 retrospectiveCorrection.integralDiscrepancy = integralGain * discrepancy
@@ -954,7 +961,7 @@ final class LoopDataManager {
             let currentBG = glucoseStore.latestGlucose?.quantity.doubleValue(for: glucoseUnit)
             else {
                 RC.resetRetrospectiveCorrection()
-                NSLog("myLoop --- could not get settings, no retrospective correction")
+                NSLog("myLoop --- could not get settings, reset retrospective correction")
                 return
         }
         let date = Date()
@@ -968,14 +975,26 @@ final class LoopDataManager {
         // safety limit for - integral action: suspend threshold - target
         let integralActionNegativeLimit = min(-15,-abs(currentMinTarget - currentSuspendThreshold))
         
+        // safety limit for current discrepancy
         let discrepancyLimit = integralActionPositiveLimit
         let currentDiscrepancyUnlimited = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
         let currentDiscrepancy = min(max(currentDiscrepancyUnlimited, -discrepancyLimit), discrepancyLimit)
         
+        // carb effect
+        let retrospectiveCarbEffect = LoopMath.predictGlucose(change.start, effects:
+            carbEffect.filterDateRange(startDate, endDate))
+        guard let lastCarbOnlyGlucose = retrospectiveCarbEffect.last else {
+            RC.resetRetrospectiveCorrection()
+            NSLog("myLoop --- could not get carb effect, reset retrospective correction")
+            return }
+        let currentCarbEffect = -change.start.quantity.doubleValue(for: glucoseUnit) + lastCarbOnlyGlucose.quantity.doubleValue(for: glucoseUnit)
+        
+        // update overall retrospective correction
         let overallRC = RC.updateRetrospectiveCorrection(
             discrepancy: currentDiscrepancy,
             positiveLimit: integralActionPositiveLimit,
-            negativeLimit: integralActionNegativeLimit
+            negativeLimit: integralActionNegativeLimit,
+            carbEffect: currentCarbEffect
         )
         
         let effectMinutes = RC.updateEffectDuration()
@@ -991,17 +1010,12 @@ final class LoopDataManager {
   
         NSLog("myLoop ===========================")
 
-        // tuning work
+        // parameter estimation work
         let estimate = estimationFilter()
         let parameterTolerance: Double = 0.2 // expected tolerance in ISF, CSF, basal rates
         let basalEffect: Double = -currentBasalRate * currentSensitivity * 0.5 // < 0
         let basalMaxDiscrepancy: Double = -basalEffect * parameterTolerance // > 0
         
-        
-        let retrospectiveCarbEffect = LoopMath.predictGlucose(change.start, effects:
-            carbEffect.filterDateRange(startDate, endDate))
-        guard let lastCarbOnlyGlucose = retrospectiveCarbEffect.last else { return }
-        let currentCarbEffect = -change.start.quantity.doubleValue(for: glucoseUnit) + lastCarbOnlyGlucose.quantity.doubleValue(for: glucoseUnit)
         
         let retrospectiveInsulinEffect = LoopMath.predictGlucose(change.start, effects:
             insulinEffect.filterDateRange(startDate, endDate))
