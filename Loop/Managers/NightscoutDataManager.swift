@@ -36,7 +36,7 @@ final class NightscoutDataManager {
         else {
             return
         }
-
+        
         deviceDataManager.loopManager.getLoopState { (manager, state) in
             var loopError = state.error
             let recommendedBolus: Double?

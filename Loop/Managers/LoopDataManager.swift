@@ -977,6 +977,7 @@ final class LoopDataManager {
         
         // safety limit for current discrepancy
         let discrepancyLimit = integralActionPositiveLimit
+        let velocityTimeInterval = change.end.endDate.timeIntervalSince(change.0.endDate).minutes
         let currentDiscrepancyUnlimited = change.end.quantity.doubleValue(for: glucoseUnit) - lastGlucose.quantity.doubleValue(for: glucoseUnit) // mg/dL
         let currentDiscrepancy = min(max(currentDiscrepancyUnlimited, -discrepancyLimit), discrepancyLimit)
         
@@ -1001,9 +1002,10 @@ final class LoopDataManager {
         dynamicEffectDuration = TimeInterval(minutes: effectMinutes)
         
         // retrospective correction including integral action
-        let discrepancy = overallRC * 60.0 / effectMinutes // extended effect duration scale
-        
-        let velocity = HKQuantity(unit: velocityUnit, doubleValue: discrepancy / change.end.endDate.timeIntervalSince(change.0.endDate))
+        let scaledDiscrepancy = overallRC * 60.0 / effectMinutes // scale to account for extended effect duration
+        //velocity calculated assuming discrepancy is found over the past 30*60 seconds, avoid potentially unsafe large gain
+        //if timeIntervalSince is shorter than 30 minutes. Note: in the original Loop code division was by change.end.endDate.timeIntervalSince(change.0.endDate)
+        let velocity = HKQuantity(unit: velocityUnit, doubleValue: scaledDiscrepancy / (30.0 * 60.0))
         let type = HKQuantityType.quantityType(forIdentifier: HKQuantityTypeIdentifier.bloodGlucose)!
         let glucose = HKQuantitySample(type: type, quantity: change.end.quantity, start: change.end.startDate, end: change.end.endDate)
         self.retrospectiveGlucoseEffect = LoopMath.decayEffect(from: glucose, atRate: velocity, for: dynamicEffectDuration)
@@ -1089,9 +1091,10 @@ final class LoopDataManager {
         NSLog("myLoop 30-min delta BG: %f", currentDeltaBG)
         NSLog("myLoop Insulin effect: %f", currentInsulinEffect)
         NSLog("myLoop Carb effect: %f", currentCarbEffect)
-        NSLog("myLoop Current discrepancy: %f", currentDiscrepancy)
         NSLog("myLoop +Integral limit: %f", integralActionPositiveLimit)
         NSLog("myLoop -Integral limit: %f", integralActionNegativeLimit)
+        NSLog("myLoop velocity time: %f", velocityTimeInterval)
+        NSLog("myLoop Current discrepancy: %f", currentDiscrepancy)
         NSLog("myLoop Retrospective correction: %f", overallRC)
         NSLog("myLoop Correction effect duration: %f", effectMinutes)
         NSLog("myLoop ---parameter estimation------")
