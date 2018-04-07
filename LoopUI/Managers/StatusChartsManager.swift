@@ -417,7 +417,7 @@ public final class StatusChartsManager {
             frame: frame,
             innerFrame: innerFrame,
             settings: chartSettings,
-            layers: layers.flatMap { $0 }
+            layers: layers.compactMap { $0 }
         )
     }
 
