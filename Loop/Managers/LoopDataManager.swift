@@ -751,7 +751,7 @@ final class LoopDataManager {
      **/
     class Effects {
         var entries: [Double]
-        let numberOfSamples: Int = 4 // parameter estimation over numberOfSamples * 5 minutes
+        let numberOfSamples: Int = 12 // parameter estimation over numberOfSamples * 5 minutes
         init() {
             entries = Array(repeating: 0, count: numberOfSamples)
         }
@@ -838,7 +838,7 @@ final class LoopDataManager {
                 if(weightBase > 0.0) {
                     insulinSensitivityWeight = abs(insulin) / weightBase
                     carbSensitivityWeight = carbs / weightBase
-                    basalWeight = basal / weightBase
+                    basalWeight = basalMaxDiscrepancy / weightBase
                 }
                 
                 let insulinDiscrepancy = insulinSensitivityWeight * expectedDiscrepancyFraction * discrepancy
@@ -864,8 +864,8 @@ final class LoopDataManager {
                 carbSensitivityWeights.entries[index] = carbSensitivityWeight
                 basalMultipliers.entries[index] = basalMultiplier
                 basalWeights.entries[index] = basalWeight
-                unexpectedPositiveDiscrepancies.entries[index] = unexpectedPositiveFraction
-                unexpectedNegativeDiscrepancies.entries[index] = unexpectedNegativeFraction
+                unexpectedPositiveDiscrepancies.entries[index] = 100 * unexpectedPositiveFraction
+                unexpectedNegativeDiscrepancies.entries[index] = 100 * unexpectedNegativeFraction
             }
 
             var estimatedISFMultiplier: Double = 1.0
@@ -888,8 +888,8 @@ final class LoopDataManager {
             var estimatedBasalConfidence: Double = 0.0
             let basalWeightsSum = basalWeights.sum()
             if(basalWeightsSum != 0) {
-                estimatedBasalMultiplier = basalMultipliers.weightedSum(weights: basalWeights.entries) / carbWeightsSum
-                estimatedBasalConfidence = 100 * basalWeights.weightedSum(weights: basalWeights.entries) / carbWeightsSum
+                estimatedBasalMultiplier = basalMultipliers.weightedSum(weights: basalWeights.entries) / basalWeightsSum
+                estimatedBasalConfidence = 100 * basalWeights.weightedSum(weights: basalWeights.entries) / basalWeightsSum
             }
             
             let estimatedCRMultiplier: Double = estimatedISFMultiplier / estimatedCSFMultiplier
@@ -1091,7 +1091,7 @@ final class LoopDataManager {
         let estimate = estimationFilter()
         
         // current basal effect
-        let basalEffect: Double = -currentBasalRate * currentSensitivity * 0.5 // < 0
+        let currentBasalEffect: Double = -currentBasalRate * currentSensitivity * 0.5 // < 0
         
         // current insulin effect
         let retrospectiveInsulinEffect = LoopMath.predictGlucose(change.start, effects:
@@ -1099,7 +1099,7 @@ final class LoopDataManager {
         guard let lastInsulinOnlyGlucose = retrospectiveInsulinEffect.last else { return }
         let currentInsulinEffect = -change.start.quantity.doubleValue(for: glucoseUnit) + lastInsulinOnlyGlucose.quantity.doubleValue(for: glucoseUnit)
         
-        let parameterEstimates: [String: Double] = estimate.updateParameterEstimates(currentDiscrepancy: currentDiscrepancy, insulinEffect: currentInsulinEffect, carbEffect: currentCarbEffect, basalEffect: basalEffect)
+        let parameterEstimates: [String: Double] = estimate.updateParameterEstimates(currentDiscrepancy: currentDiscrepancy, insulinEffect: currentInsulinEffect, carbEffect: currentCarbEffect, basalEffect: currentBasalEffect)
         let count = estimate.updateCount()
     
         
@@ -1116,11 +1116,11 @@ final class LoopDataManager {
         NSLog("myLoop Retrospective correction: %f", overallRC)
         NSLog("myLoop Correction effect duration: %f", effectMinutes)
         NSLog("myLoop ---parameter estimation------")
-        NSLog("myLoop Estimated ISF multiplier: %f with &f confidence", parameterEstimates["ISF"]!, parameterEstimates["confidenceISF"]!)
-        NSLog("myLoop Estimated CSF multiplier: %f with &f confidence", parameterEstimates["CSF"]!, parameterEstimates["confidenceCSF"]!)
-        NSLog("myLoop Estimated CR multiplier: %f with &f confidence", parameterEstimates["CR"]!, parameterEstimates["confidenceCR"]!)
-        NSLog("myLoop Estimated basal multiplier: %f with &f confidence", parameterEstimates["Basal"]!, parameterEstimates["confidenceBasal"]!)
-        NSLog("myLoop Unexpected +BG: %f, unexpected -BG: &f", parameterEstimates["positiveDiscrepancy"]!, parameterEstimates["negativeDiscrepancy"]!)
+        NSLog("myLoop Estimated ISF multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["ISF"]!, parameterEstimates["confidenceISF"]!)
+        NSLog("myLoop Estimated CSF multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["CSF"]!, parameterEstimates["confidenceCSF"]!)
+        NSLog("myLoop Estimated CR multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["CR"]!, parameterEstimates["confidenceCR"]!)
+        NSLog("myLoop Estimated basal multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["Basal"]!, parameterEstimates["confidenceBasal"]!)
+        NSLog("myLoop Unexpected +BG: %2.0f%%, unexpected -BG: %2.0f%%", parameterEstimates["positiveDiscrepancy"]!, parameterEstimates["negativeDiscrepancy"]!)
         NSLog("myLoop Parameter estimation cycles: %i", count)
     }
 
