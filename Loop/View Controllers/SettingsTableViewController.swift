@@ -120,6 +120,7 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
         case basalRate
         case carbRatio
         case insulinSensitivity
+        case parameterEstimation
         case maxBasal
         case maxBolus
     }
@@ -347,7 +348,7 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
                 }
             case .maxBasal:
                 configCell.textLabel?.text = NSLocalizedString("Maximum Basal Rate", comment: "The title text for the maximum basal rate value")
-
+                
                 if let maxBasal = dataManager.loopManager.settings.maximumBasalRatePerHour {
                     configCell.detailTextLabel?.text = "\(valueNumberFormatter.string(from: NSNumber(value: maxBasal))!) U/hour"
                 } else {
@@ -361,6 +362,11 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
                 } else {
                     configCell.detailTextLabel?.text = TapToSetString
                 }
+            case .parameterEstimation:
+                configCell.textLabel?.text = NSLocalizedString("Estimated ISF Multiplier", comment: "The title text for results of parameter estimation")
+                let isfMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.insulinSensitivityMultipler))!
+                let isfConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.insulinSensitivityConfidence))!
+                configCell.detailTextLabel?.text = String(format: NSLocalizedString("%1$@ (%2$@%%)", comment: "Format string for ISF estimation multipler. (1: value)(2: confidence)(3: buffer)"), isfMultiplier, isfConfidence)
             }
 
             return configCell
@@ -615,6 +621,25 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
                 }
             case .insulinModel:
                 performSegue(withIdentifier: InsulinModelSettingsViewController.className, sender: sender)
+            case .parameterEstimation:
+                let vc = TextFieldTableViewController()
+                let isfMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.insulinSensitivityMultipler))!
+                let isfConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.insulinSensitivityConfidence))!
+                let crMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.carbRatioMultiplier))!
+                let crConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.carbRatioConfidence))!
+                let basalMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.basalMultiplier))!
+                let basalConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.basalConfidence))!
+                let estimationBuffer = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.estimationBufferPercentage))!
+                let unexpectedPostiveDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.unexpectedPositiveDiscrepancyPercentage))!
+                let unexpectedNegativeDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: 0.04 * dataManager.loopManager.estimatedParameters.unexpectedNegativeDiscrepancyPercentage))!
+                vc.value = String(format: NSLocalizedString("ISF:%1$@(%2$@%%) CR:%3$@(%4$@%%) B:%5$@(%6$@%%)", comment: "Format string for estimated parameters. (1: ISF)(2: ISFconf)(3: CR)(4: CRconf)(5: Basal)(6: BasalConf)"), isfMultiplier, isfConfidence, crMultiplier, crConfidence, basalMultiplier, basalConfidence)
+                //vc.title = sender?.textLabel?.text
+                vc.title = "Estimated Parameters"
+                vc.contextHelp = "Estimates of parameter multipliers, with confidence levels shown in (%), are computed based on the past 4 hours of data. Estimation buffer is currenly " + estimationBuffer + "% full. Estimator has detected " + unexpectedPostiveDiscrepancy + "% unexpected +BG discrepancies, possibly due to unannounced or underestimated carbs, and " + unexpectedNegativeDiscrepancy + "% unexpected -BG discrepancies, possibly due to exercise or overestimated carbs. This is for your information only, do not make any adjustments based on the values shown on this screen."
+                vc.indexPath = indexPath
+                vc.delegate = self
+                
+                show(vc, sender: indexPath)
             }
         case .devices:
             let vc = RileyLinkDeviceTableViewController()
@@ -959,6 +984,8 @@ extension SettingsTableViewController: TextFieldTableViewControllerDelegate {
                     } else {
                         dataManager.loopManager.settings.maximumBolus = nil
                     }
+                case .parameterEstimation:
+                    break 
                 default:
                     assertionFailure()
                 }

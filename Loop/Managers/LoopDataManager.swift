@@ -37,7 +37,23 @@ final class LoopDataManager {
     unowned let delegate: LoopDataManagerDelegate
 
     private let logger: CategoryLogger
-
+    
+    struct EstimatedParameters {
+        var insulinSensitivityMultipler: Double = 1.0
+        var insulinSensitivityConfidence: Double = 0.0
+        var carbSensitivityMultiplier: Double = 1.0
+        var carbSensitivityConfidence: Double = 0.0
+        var carbRatioMultiplier: Double = 1.0
+        var carbRatioConfidence: Double = 0.0
+        var basalMultiplier: Double = 1.0
+        var basalConfidence: Double = 0.0
+        var unexpectedPositiveDiscrepancyPercentage: Double = 0.0
+        var unexpectedNegativeDiscrepancyPercentage: Double = 0.0
+        var estimationBufferPercentage: Double = 0.0
+    }
+    
+    var estimatedParameters = EstimatedParameters()
+    
     init(
         delegate: LoopDataManagerDelegate,
         lastLoopCompleted: Date?,
@@ -55,7 +71,7 @@ final class LoopDataManager {
         self.lastLoopCompleted = lastLoopCompleted
         self.lastTempBasal = lastTempBasal
         self.settings = settings
-
+        
         let healthStore = HKHealthStore()
 
         carbStore = CarbStore(
@@ -92,6 +108,7 @@ final class LoopDataManager {
         }
     }
 
+    
     // MARK: - Preferences
 
     /// Loop-related settings
@@ -751,7 +768,7 @@ final class LoopDataManager {
      **/
     class Effects {
         var entries: [Double]
-        let numberOfSamples: Int = 12 // parameter estimation over numberOfSamples * 5 minutes
+        let numberOfSamples: Int = 48 // parameter estimation over numberOfSamples, 48 * 5 = 240 minutes = 4 hours
         init() {
             entries = Array(repeating: 0, count: numberOfSamples)
         }
@@ -784,31 +801,30 @@ final class LoopDataManager {
         init() {
             parameterDeviation = 0.25 // expected deviation in ISF, CSF, basal rates
         }
-        func updateCount() -> Int {
-            estimationFilter.updateCounter += 1
+        func estimationCount() -> Int {
             return(estimationFilter.updateCounter)
         }
         func updateParameterEstimates(
             currentDiscrepancy: Double,
             insulinEffect: Double,
             carbEffect: Double,
-            basalEffect: Double) -> [String: Double] {
+            basalEffect: Double) -> EstimatedParameters {
             
             let currentInsulinEffects = estimationFilter.insulinEffects.insertEffect(newEffect: insulinEffect)
             let currentCarbEffects = estimationFilter.carbEffects.insertEffect(newEffect: carbEffect)
             let currentBasalEffects = estimationFilter.basalEffects.insertEffect(newEffect: basalEffect)
             let currentDiscrepancies = estimationFilter.discrepancies.insertEffect(newEffect: currentDiscrepancy)
             
-            let insulinSensitivityMultipliers = Effects();
-            let insulinSensitivityWeights = Effects();
-            let carbSensitivityMultipliers = Effects();
-            let carbSensitivityWeights = Effects();
-            let basalMultipliers = Effects();
-            let basalWeights = Effects();
-            let unexpectedPositiveDiscrepancies = Effects();
-            let unexpectedNegativeDiscrepancies = Effects();
+            let insulinSensitivityMultipliers = Effects()
+            let insulinSensitivityWeights = Effects()
+            let carbSensitivityMultipliers = Effects()
+            let carbSensitivityWeights = Effects()
+            let basalMultipliers = Effects()
+            let basalWeights = Effects()
+            let unexpectedPositiveDiscrepancies = Effects()
+            let unexpectedNegativeDiscrepancies = Effects()
             
-            var parameterEstimates: [String: Double] = [:]
+            var parameterEstimates = EstimatedParameters()
             
             for (index, discrepancy) in currentDiscrepancies.enumerated() {
                 let insulin = currentInsulinEffects[index]
@@ -900,16 +916,20 @@ final class LoopDataManager {
             unexpectedPositiveDiscrepancy = unexpectedPositiveDiscrepancies.sum() / Double(unexpectedNegativeDiscrepancies.entries.count)
             unexpectedNegativeDiscrepancy = unexpectedNegativeDiscrepancies.sum() / Double(unexpectedNegativeDiscrepancies.entries.count)
             
-            parameterEstimates["ISF"] = estimatedISFMultiplier
-            parameterEstimates["confidenceISF"] = estimatedISFConfidence
-            parameterEstimates["CSF"] = estimatedCSFMultiplier
-            parameterEstimates["confidenceCSF"] = estimatedCSFConfidence
-            parameterEstimates["Basal"] = estimatedBasalMultiplier
-            parameterEstimates["confidenceBasal"] = estimatedBasalConfidence
-            parameterEstimates["CR"] = estimatedCRMultiplier
-            parameterEstimates["confidenceCR"] = estimatedCRConfidence
-            parameterEstimates["positiveDiscrepancy"] = unexpectedPositiveDiscrepancy
-            parameterEstimates["negativeDiscrepancy"] = unexpectedNegativeDiscrepancy
+            estimationFilter.updateCounter += 1
+            let estimationBufferPercentage: Double = 100 * min(Double(estimationFilter.updateCounter) / Double(unexpectedNegativeDiscrepancies.entries.count), 1.0)
+            
+            parameterEstimates.insulinSensitivityMultipler = estimatedISFMultiplier
+            parameterEstimates.insulinSensitivityConfidence = estimatedISFConfidence.rounded()
+            parameterEstimates.carbSensitivityMultiplier = estimatedCSFMultiplier
+            parameterEstimates.carbSensitivityConfidence = estimatedCSFConfidence.rounded()
+            parameterEstimates.basalMultiplier = estimatedBasalMultiplier
+            parameterEstimates.basalConfidence = estimatedBasalConfidence.rounded()
+            parameterEstimates.carbRatioMultiplier = estimatedCRMultiplier
+            parameterEstimates.carbRatioConfidence = estimatedCRConfidence.rounded()
+            parameterEstimates.unexpectedPositiveDiscrepancyPercentage = unexpectedPositiveDiscrepancy.rounded()
+            parameterEstimates.unexpectedNegativeDiscrepancyPercentage = unexpectedNegativeDiscrepancy.rounded()
+            parameterEstimates.estimationBufferPercentage = estimationBufferPercentage.rounded()
 
             return(parameterEstimates)
         }
@@ -1099,9 +1119,8 @@ final class LoopDataManager {
         guard let lastInsulinOnlyGlucose = retrospectiveInsulinEffect.last else { return }
         let currentInsulinEffect = -change.start.quantity.doubleValue(for: glucoseUnit) + lastInsulinOnlyGlucose.quantity.doubleValue(for: glucoseUnit)
         
-        let parameterEstimates: [String: Double] = estimate.updateParameterEstimates(currentDiscrepancy: currentDiscrepancy, insulinEffect: currentInsulinEffect, carbEffect: currentCarbEffect, basalEffect: currentBasalEffect)
-        let count = estimate.updateCount()
-    
+        self.estimatedParameters = estimate.updateParameterEstimates(currentDiscrepancy: currentDiscrepancy, insulinEffect: currentInsulinEffect, carbEffect: currentCarbEffect, basalEffect: currentBasalEffect)
+        let count = estimate.estimationCount()
         
         // monitoring
         NSLog("myLoop ---retrospective correction---")
@@ -1116,11 +1135,11 @@ final class LoopDataManager {
         NSLog("myLoop Retrospective correction: %f", overallRC)
         NSLog("myLoop Correction effect duration: %f", effectMinutes)
         NSLog("myLoop ---parameter estimation------")
-        NSLog("myLoop Estimated ISF multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["ISF"]!, parameterEstimates["confidenceISF"]!)
-        NSLog("myLoop Estimated CSF multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["CSF"]!, parameterEstimates["confidenceCSF"]!)
-        NSLog("myLoop Estimated CR multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["CR"]!, parameterEstimates["confidenceCR"]!)
-        NSLog("myLoop Estimated basal multiplier: %4.2f with %2.0f%% confidence", parameterEstimates["Basal"]!, parameterEstimates["confidenceBasal"]!)
-        NSLog("myLoop Unexpected +BG: %2.0f%%, unexpected -BG: %2.0f%%", parameterEstimates["positiveDiscrepancy"]!, parameterEstimates["negativeDiscrepancy"]!)
+        NSLog("myLoop Estimated ISF multiplier: %4.2f with %2.0f%% confidence", self.estimatedParameters.insulinSensitivityMultipler, self.estimatedParameters.insulinSensitivityConfidence)
+        NSLog("myLoop Estimated CSF multiplier: %4.2f with %2.0f%% confidence", self.estimatedParameters.carbSensitivityMultiplier, self.estimatedParameters.carbSensitivityConfidence)
+        NSLog("myLoop Estimated CR multiplier: %4.2f with %2.0f%% confidence", self.estimatedParameters.carbRatioMultiplier, self.estimatedParameters.carbRatioConfidence)
+        NSLog("myLoop Estimated basal multiplier: %4.2f with %2.0f%% confidence", self.estimatedParameters.basalMultiplier, self.estimatedParameters.basalConfidence)
+        NSLog("myLoop Unexpected +BG: %2.0f%%, unexpected -BG: %2.0f%%", self.estimatedParameters.unexpectedPositiveDiscrepancyPercentage, self.estimatedParameters.unexpectedNegativeDiscrepancyPercentage)
         NSLog("myLoop Parameter estimation cycles: %i", count)
     }
 
