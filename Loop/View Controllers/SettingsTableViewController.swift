@@ -622,25 +622,17 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
             case .insulinModel:
                 performSegue(withIdentifier: InsulinModelSettingsViewController.className, sender: sender)
             case .parameterEstimation:
-                let vc = TextFieldTableViewController()
-                let isfMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.insulinSensitivityMultipler))!
-                let isfConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.insulinSensitivityConfidence))!
-                let crMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.carbRatioMultiplier))!
-                let crConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.carbRatioConfidence))!
-                let basalMultiplier = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.basalMultiplier))!
-                let basalConfidence = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.basalConfidence))!
+                let vc = EstimatedParametersTableViewController(parameters: dataManager.loopManager.estimatedParameters)
                 let estimationBuffer = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.estimationBufferPercentage))!
                 let unexpectedPostiveDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.unexpectedPositiveDiscrepancyPercentage))!
                 let unexpectedNegativeDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.unexpectedNegativeDiscrepancyPercentage))!
-                vc.value = String(format: NSLocalizedString("ISF:%1$@(%2$@%%) CR:%3$@(%4$@%%) B:%5$@(%6$@%%)", comment: "Format string for estimated parameters. (1: ISF)(2: ISFconf)(3: CR)(4: CRconf)(5: Basal)(6: BasalConf)"), isfMultiplier, isfConfidence, crMultiplier, crConfidence, basalMultiplier, basalConfidence)
                 vc.title = "Estimated Parameters"
                 let commentLine1: String = "Estimates of parameter multipliers, with confidence levels shown in (%), are computed based on the past 4 hours of data (data buffer is currenly " + estimationBuffer + "% full)."
                 let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% unexpected +BG discrepancies possibly due to unannounced or underestimated carbs, and " + unexpectedNegativeDiscrepancy + "% unexpected -BG discrepancies possibly due to exercise or overestimated carbs."
-                let commentLine3: String = "This is highly experimental, do not make any adjustments based on the values shown on this screen."
+                let commentLine3: String = "Parameter estimation is highly experimental work in progress, do not make any adjustments based on the values shown on this screen."
                 vc.contextHelp = commentLine1 + "\n\n" + commentLine2 + "\n\n" + commentLine3
                 vc.indexPath = indexPath
                 vc.delegate = self
-                
                 show(vc, sender: indexPath)
             }
         case .devices:

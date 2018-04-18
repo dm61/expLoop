@@ -909,7 +909,8 @@ final class LoopDataManager {
             }
             
             let estimatedCRMultiplier: Double = estimatedISFMultiplier / estimatedCSFMultiplier
-            let estimatedCRConfidence: Double = min(estimatedISFConfidence,estimatedCSFConfidence)
+            let estimatedCRConfidence: Double = max(0, 100 - sqrt(pow((100 - estimatedISFConfidence),2) +
+                                                        pow((100 - estimatedCSFConfidence),2)))
             
             var unexpectedPositiveDiscrepancy: Double = 0.0
             var unexpectedNegativeDiscrepancy: Double = 0.0
