@@ -16,6 +16,7 @@ import HealthKit
 final class EstimatedParametersTableViewController: TextFieldTableViewController {
     
     var displayEstimatedParameter: [String] = []
+    let hoursAgo: String
     
     private let valueNumberFormatter: NumberFormatter = {
         let formatter = NumberFormatter()
@@ -41,8 +42,6 @@ final class EstimatedParametersTableViewController: TextFieldTableViewController
             from: NSNumber(value: parameters.basalMultiplier))!
         let basalConfidence = valueNumberFormatter.string(
             from: NSNumber(value: parameters.basalConfidence))!
-        let estimationBuffer = valueNumberFormatter.string(
-            from: NSNumber(value: parameters.estimationBufferPercentage))!
         let unexpectedPostiveDiscrepancy = valueNumberFormatter.string(
             from: NSNumber(value: parameters.unexpectedPositiveDiscrepancyPercentage))!
         let unexpectedNegativeDiscrepancy = valueNumberFormatter.string(
@@ -57,8 +56,8 @@ final class EstimatedParametersTableViewController: TextFieldTableViewController
             "Unexpected +BG Discrepancies: " + unexpectedPostiveDiscrepancy + "%")
         displayEstimatedParameter.append(
             "Unexpected -BG Discrepancies: " + unexpectedNegativeDiscrepancy + "%")
-        displayEstimatedParameter.append(
-            "Estimation data buffer is " + estimationBuffer + "% full")
+        hoursAgo = valueNumberFormatter.string(
+            from: NSNumber(value: 0.02 * parameters.estimationBufferPercentage))!
 
         super.init(style: .grouped)
 
@@ -66,6 +65,10 @@ final class EstimatedParametersTableViewController: TextFieldTableViewController
     
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         return displayEstimatedParameter.count
+    }
+    
+    override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
+        return "Approximately " + self.hoursAgo + " hours ago:"
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

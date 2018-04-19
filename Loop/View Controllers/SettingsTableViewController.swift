@@ -622,15 +622,19 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
             case .insulinModel:
                 performSegue(withIdentifier: InsulinModelSettingsViewController.className, sender: sender)
             case .parameterEstimation:
+                let bufferPercentage = dataManager.loopManager.estimatedParameters.estimationBufferPercentage
                 let vc = EstimatedParametersTableViewController(parameters: dataManager.loopManager.estimatedParameters)
-                let estimationBuffer = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.estimationBufferPercentage))!
+                let estimationBuffer = valueNumberFormatter.string(from: NSNumber(value: bufferPercentage))!
                 let unexpectedPostiveDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.unexpectedPositiveDiscrepancyPercentage))!
                 let unexpectedNegativeDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.unexpectedNegativeDiscrepancyPercentage))!
                 vc.title = "Estimated Parameters"
-                let commentLine1: String = "Estimates of parameter multipliers, with confidence levels shown in (%), are computed based on the past 4 hours of data (data buffer is currenly " + estimationBuffer + "% full)."
-                let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% unexpected +BG discrepancies possibly due to unannounced or underestimated carbs, and " + unexpectedNegativeDiscrepancy + "% unexpected -BG discrepancies possibly due to exercise or overestimated carbs."
+                var commentLine1: String = ""
+                if(bufferPercentage < 99) {
+                    commentLine1 = "WARNING: parameter estimates are less reliable during initialization. Estimation data buffer is currently at " + estimationBuffer + "%.\n\n"
+                }
+                let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% unexpected +BG discrepancies possibly due to unannounced or underestimated carbs, and " + unexpectedNegativeDiscrepancy + "% unexpected -BG discrepancies possibly due to exercise or overestimated carbs.\n\n"
                 let commentLine3: String = "Parameter estimation is highly experimental work in progress, do not make any adjustments based on the values shown on this screen."
-                vc.contextHelp = commentLine1 + "\n\n" + commentLine2 + "\n\n" + commentLine3
+                vc.contextHelp = commentLine1 + commentLine2 + commentLine3
                 vc.indexPath = indexPath
                 vc.delegate = self
                 show(vc, sender: indexPath)
