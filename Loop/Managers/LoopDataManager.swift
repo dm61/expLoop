@@ -791,6 +791,8 @@ final class LoopDataManager {
     struct estimationFilter {
  
         let parameterDeviation: Double
+        let maxMultiplier: Double
+        let minMultiplier: Double
         
         static var insulinEffects = Effects()
         static var carbEffects = Effects()
@@ -800,6 +802,8 @@ final class LoopDataManager {
         
         init() {
             parameterDeviation = 0.25 // expected deviation in ISF, CSF, basal rates
+            maxMultiplier = 1 + parameterDeviation
+            minMultiplier = 1 - parameterDeviation
         }
         func estimationCount() -> Int {
             return(estimationFilter.updateCounter)
@@ -864,14 +868,20 @@ final class LoopDataManager {
                 var insulinSensitivityMultiplier: Double = 1.0
                 if(insulin != 0){
                     insulinSensitivityMultiplier = 1.0 + insulinDiscrepancy / insulin
+                    insulinSensitivityMultiplier =
+                        max( min(insulinSensitivityMultiplier, maxMultiplier), minMultiplier)
                 }
                 var carbSensitivityMultiplier: Double = 1.0
                 if(carbs != 0){
                     carbSensitivityMultiplier = 1.0 + carbDiscrepancy / carbs
+                    carbSensitivityMultiplier =
+                        max( min(carbSensitivityMultiplier, maxMultiplier), minMultiplier)
                 }
                 var basalMultiplier: Double = 1.0
                 if(basal != 0) {
                     basalMultiplier = 1.0 - basalDiscrepancy / basal
+                    basalMultiplier =
+                        max( min(basalMultiplier, maxMultiplier), minMultiplier)
                 }
                 
                 insulinSensitivityMultipliers.entries[index] = insulinSensitivityMultiplier
