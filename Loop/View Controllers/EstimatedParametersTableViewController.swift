@@ -57,7 +57,7 @@ final class EstimatedParametersTableViewController: TextFieldTableViewController
         displayEstimatedParameter.append(
             "Unexpected -BG Discrepancies: " + unexpectedNegativeDiscrepancy + "%")
         hoursAgo = valueNumberFormatter.string(
-            from: NSNumber(value: 0.02 * parameters.estimationBufferPercentage))!
+            from: NSNumber(value: 0.04 * parameters.estimationBufferPercentage))!
 
         super.init(style: .grouped)
 
