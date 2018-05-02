@@ -629,11 +629,11 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
                 let unexpectedNegativeDiscrepancy = valueNumberFormatter.string(from: NSNumber(value: dataManager.loopManager.estimatedParameters.unexpectedNegativeDiscrepancyPercentage))!
                 vc.title = "Estimated Parameters"
                 var commentLine1: String = ""
-                if(bufferPercentage < 99) {
-                    commentLine1 = "WARNING: parameter estimates are less reliable during initialization. Estimation data buffer is currently at " + estimationBuffer + "%.\n\n"
+                if(bufferPercentage < 98) {
+                    commentLine1 = "WARNING: extimator initialization is in progress. Estimation data buffer is currently at " + estimationBuffer + "%.\n\n"
                 }
-                let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% unexpected +BG discrepancies possibly due to unannounced or underestimated carbs, and " + unexpectedNegativeDiscrepancy + "% unexpected -BG discrepancies possibly due to exercise or overestimated carbs.\n\n"
-                let commentLine3: String = "Parameter estimation is highly experimental work in progress, do not make any adjustments based on the values shown on this screen."
+                let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% excessive +BG discrepancies possibly due to unannounced carbs, underestimated carbs, fast absorbing carbs, or other unmodeled factors pushing BG up, and " + unexpectedNegativeDiscrepancy + "% excessive -BG discrepancies possibly due to exercise, overestimated carbs, or other unmodeled factors pushing BG down.\n\n"
+                let commentLine3: String = "WARNING: parameter estimation is highly experimental work in progress. The results shown on this page are for your information only. Your manually entered settings remain unaffected by the estimator."
                 vc.contextHelp = commentLine1 + commentLine2 + commentLine3
                 vc.indexPath = indexPath
                 vc.delegate = self

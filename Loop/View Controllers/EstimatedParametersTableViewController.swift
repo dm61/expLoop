@@ -53,11 +53,11 @@ final class EstimatedParametersTableViewController: TextFieldTableViewController
         displayEstimatedParameter.append(
             "Basal Multiplier = " + basalMultiplier + " (" + basalConfidence + "% confidence)")
         displayEstimatedParameter.append(
-            "Unexpected +BG Discrepancies: " + unexpectedPostiveDiscrepancy + "%")
+            "Excessive +BG Discrepancies: " + unexpectedPostiveDiscrepancy + "%")
         displayEstimatedParameter.append(
-            "Unexpected -BG Discrepancies: " + unexpectedNegativeDiscrepancy + "%")
+            "Excessive -BG Discrepancies: " + unexpectedNegativeDiscrepancy + "%")
         hoursAgo = valueNumberFormatter.string(
-            from: NSNumber(value: 0.04 * parameters.estimationBufferPercentage))!
+            from: NSNumber(value: parameters.estimationHours * parameters.estimationBufferPercentage / 100))!
 
         super.init(style: .grouped)
 
@@ -68,7 +68,7 @@ final class EstimatedParametersTableViewController: TextFieldTableViewController
     }
     
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        return "Approximately " + self.hoursAgo + " hours ago:"
+        return "Over past " + self.hoursAgo + " hours:"
     }
     
     override func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {

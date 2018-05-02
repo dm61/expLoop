@@ -51,6 +51,7 @@ final class LoopDataManager {
         var unexpectedPositiveDiscrepancyPercentage: Double = 0.0
         var unexpectedNegativeDiscrepancyPercentage: Double = 0.0
         var estimationBufferPercentage: Double = 0.0
+        let estimationHours: Double = 6.0
     }
     var estimatedParameters = EstimatedParameters()
     
@@ -827,11 +828,14 @@ final class LoopDataManager {
     }
     
     /**
-     Tracking parameter estimation math
+     Parameter estimation math
      **/
     private func trackingParameterEstimator(currentDiscrepancy: Double, insulinEffect: Double, carbEffect: Double, endDate: Date) -> EstimatedParameters {
         
         let parameterDeviation = 0.25 // expected max deviation in ISF, CSF, basal rates
+        let keepThreshold = 0.55 // discard points with effect contribution less than keepThreshold
+        let pointNoiseDeviation = 0.80 // single point confidence = 1 - pointNoiseDeviation
+        
         let maxMultiplier = 1 + parameterDeviation // upper limit for the estimated multipliers
         let minMultiplier = 1 - parameterDeviation // lower limit for the estimated multipliers
         let estimatorCounter = Effects()
@@ -844,9 +848,9 @@ final class LoopDataManager {
         let pastDate = endDate.addingTimeInterval(TimeInterval(minutes: -120))
         let pastBasalRate = basalRates.value(at: pastDate)
         let glucoseUnit = HKUnit.milligramsPerDeciliter() // do all calcs in mg/dL
-        let pastSensitivity = insulinSensitivity.quantity(at: pastDate).doubleValue(for: glucoseUnit)
+        let currentSensitivity = insulinSensitivity.quantity(at: endDate).doubleValue(for: glucoseUnit)
         // approximate 30-min BG impact of past basal rate
-        let currentBasalEffect: Double = -pastBasalRate * pastSensitivity * 0.5 // < 0
+        let currentBasalEffect: Double = -pastBasalRate * currentSensitivity * 0.5 // < 0
   
         var parameterEstimates = EstimatedParameters() // outputs of estimation filter
         let startDate = endDate.addingTimeInterval(TimeInterval(minutes: -30))
@@ -879,8 +883,8 @@ final class LoopDataManager {
         let basalEffect = GlucoseEffectVelocity(startDate: startDate, endDate: endDate, quantity: basalQuantity)
         retrospectiveBasalEffects.insert(basalEffect, at: 0)
 
-        // Estimation filter runs over the past 8 hours of retrospective effects
-        let estimationHours : Double = 8.0
+        // Estimation filter runs over number of hours set in EstimatedParameters()
+        let estimationHours = parameterEstimates.estimationHours
         retrospectiveDiscrepancies = retrospectiveDiscrepancies.filterDateRange(Date(timeIntervalSinceNow: .hours(-estimationHours)), nil)
         retrospectiveInsulinEffects = retrospectiveInsulinEffects.filterDateRange(Date(timeIntervalSinceNow: .hours(-estimationHours)), nil)
         retrospectiveCarbEffects = retrospectiveCarbEffects.filterDateRange(Date(timeIntervalSinceNow: .hours(-estimationHours)), nil)
@@ -935,7 +939,7 @@ final class LoopDataManager {
             var unexpectedPositiveFraction: Double = 0.0
             var unexpectedNegativeFraction: Double = 0.0
                 
-            // fraction of observed discrepancy that can be ascribed to parameters
+            // fraction of observed discrepancy that can be ascribed to variation in parameters
             if (discrepancy != 0.0) {
                 expectedDiscrepancyFraction = min(maximumExpectedDiscrepancy / abs(discrepancy), 1.0)
                 if (discrepancy > 0.0) {
@@ -952,19 +956,19 @@ final class LoopDataManager {
             var basalWeight: Double = 0.0
             if(weightBase > 0.0) {
                 insulinSensitivityWeight = abs(insulin) / weightBase
-                if(insulinSensitivityWeight < 0.5){
+                if(insulinSensitivityWeight < keepThreshold){
                    insulinSensitivityWeight = 0.0
                 } else {
                     insulinSensitivityPoints = insulinSensitivityWeights.incrementNonZeroCounter()
                 }
                 carbSensitivityWeight = carbs / weightBase
-                if(carbSensitivityWeight < 0.5){
+                if(carbSensitivityWeight < keepThreshold){
                     carbSensitivityWeight = 0.0
                 } else {
                     carbSensitivityPoints = carbSensitivityWeights.incrementNonZeroCounter()
                 }
                 basalWeight = basalMaxDiscrepancy / weightBase
-                if(basalWeight < 0.5){
+                if(basalWeight < keepThreshold){
                     basalWeight = 0.0
                 } else {
                     basalPoints = basalWeights.incrementNonZeroCounter()
@@ -996,7 +1000,7 @@ final class LoopDataManager {
                     max( min(basalMultiplier, maxMultiplier), minMultiplier)
             }
                 
-            NSLog("myLoop index: %d, ISF multiplier: %f, weight: %f", index, insulinSensitivityMultiplier, insulinSensitivityWeight)
+            NSLog("myLoop %d, ISF: %4.2f(%4.2f), CSF: %4.2f(%4.2f), B: %4.2f(%4.2f)", index, insulinSensitivityMultiplier, insulinSensitivityWeight, carbSensitivityMultiplier, carbSensitivityWeight, basalMultiplier, basalWeight)
             
             insulinSensitivityMultipliers.entries.insert(insulinSensitivityMultiplier, at: 0)
             insulinSensitivityWeights.entries.insert(insulinSensitivityWeight, at: 0)
@@ -1018,7 +1022,7 @@ final class LoopDataManager {
             estimatedISFMultiplier = insulinSensitivityMultipliers.weightedSum(weights:insulinSensitivityWeights.entries) / insulinWeightsSum
             var insulinSensitivityDeviation: Double = 1.0
             if(insulinSensitivityPoints > 0) {
-                insulinSensitivityDeviation = 0.5 / sqrt(Double(insulinSensitivityPoints))
+                insulinSensitivityDeviation = pointNoiseDeviation / sqrt(Double(insulinSensitivityPoints))
             }
             let insulinSensitivityUncertainty = 1.0 - insulinSensitivityWeights.weightedSum(weights:insulinSensitivityWeights.entries) / insulinWeightsSum
             estimatedISFConfidence = 100 * max(0, 1 - sqrt(pow(insulinSensitivityDeviation, 2) + pow(insulinSensitivityUncertainty, 2)))
@@ -1031,7 +1035,7 @@ final class LoopDataManager {
             estimatedCSFMultiplier = carbSensitivityMultipliers.weightedSum(weights: carbSensitivityWeights.entries) / carbWeightsSum
             var carbSensitivityDeviation: Double = 1.0
             if(carbSensitivityPoints > 0) {
-                carbSensitivityDeviation = 0.5 / sqrt(Double(carbSensitivityPoints))
+                carbSensitivityDeviation = pointNoiseDeviation / sqrt(Double(carbSensitivityPoints))
             }
             let carbSensitivityUncertainty = 1.0 - carbSensitivityWeights.weightedSum(weights:carbSensitivityWeights.entries) / carbWeightsSum
             estimatedCSFConfidence = 100 * max(0, 1 - sqrt(pow(carbSensitivityDeviation, 2) + pow(carbSensitivityUncertainty, 2)))
@@ -1044,7 +1048,7 @@ final class LoopDataManager {
             estimatedBasalMultiplier = basalMultipliers.weightedSum(weights: basalWeights.entries) / basalWeightsSum
             var basalDeviation: Double = 1.0
             if(basalPoints > 0) {
-                basalDeviation = 0.5 / sqrt(Double(basalPoints))
+                basalDeviation = pointNoiseDeviation / sqrt(Double(basalPoints))
             }
             let basalUncertainty = 1.0 - basalWeights.weightedSum(weights:basalWeights.entries) / basalWeightsSum
             estimatedBasalConfidence = 100 * max(0, 1 - sqrt(pow(basalDeviation, 2) + pow(basalUncertainty, 2)))
