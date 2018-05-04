@@ -833,7 +833,7 @@ final class LoopDataManager {
     private func trackingParameterEstimator(currentDiscrepancy: Double, insulinEffect: Double, carbEffect: Double, endDate: Date) -> EstimatedParameters {
         
         let parameterDeviation = 0.25 // expected max deviation in ISF, CSF, basal rates
-        let keepThreshold = 0.55 // discard points with effect contribution less than keepThreshold
+        let keepThreshold = 0.50 // discard points with effect contribution less than keepThreshold
         let pointNoiseDeviation = 0.80 // single point confidence = 1 - pointNoiseDeviation
         
         let maxMultiplier = 1 + parameterDeviation // upper limit for the estimated multipliers
@@ -949,7 +949,7 @@ final class LoopDataManager {
                 }
             }
                 
-            // weights proportional to current effect magnitudes
+            // confidence weights are proportional to current effect magnitudes
             let weightBase = carbs + basalMaxDiscrepancy + abs(insulin)
             var insulinSensitivityWeight: Double = 0.0
             var carbSensitivityWeight: Double = 0.0
@@ -1014,7 +1014,7 @@ final class LoopDataManager {
 
         NSLog("myLoop ISF points: %d, CSF points: %d, basal points: %d", insulinSensitivityPoints, carbSensitivityPoints, basalPoints)
         
-        // Multipliers and confidence levels found as weighted averages
+        // Multipliers and confidence levels found as weighted averages over estimation time
         var estimatedISFMultiplier: Double = 1.0
         var estimatedISFConfidence: Double = 0.0
         let insulinWeightsSum = insulinSensitivityWeights.sum()

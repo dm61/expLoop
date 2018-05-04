@@ -630,10 +630,10 @@ final class SettingsTableViewController: UITableViewController, DailyValueSchedu
                 vc.title = "Estimated Parameters"
                 var commentLine1: String = ""
                 if(bufferPercentage < 98) {
-                    commentLine1 = "WARNING: extimator initialization is in progress. Estimation data buffer is currently at " + estimationBuffer + "%.\n\n"
+                    commentLine1 = "Estimator initialization in progress, currently at " + estimationBuffer + "%.\n\n"
                 }
-                let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% excessive +BG discrepancies possibly due to unannounced carbs, underestimated carbs, fast absorbing carbs, or other unmodeled factors pushing BG up, and " + unexpectedNegativeDiscrepancy + "% excessive -BG discrepancies possibly due to exercise, overestimated carbs, or other unmodeled factors pushing BG down.\n\n"
-                let commentLine3: String = "WARNING: parameter estimation is highly experimental work in progress. The results shown on this page are for your information only. Your manually entered settings remain unaffected by the estimator."
+                let commentLine2: String = "Estimator has detected " + unexpectedPostiveDiscrepancy + "% excessive +BG discrepancies possibly due to unannounced carbs, underestimated carbs, fast absorbing carbs, or other factors pushing BG up, and " + unexpectedNegativeDiscrepancy + "% excessive -BG discrepancies possibly due to exercise, overestimated carbs, or other factors pushing BG down.\n\n"
+                let commentLine3: String = "WARNING: parameter estimation is highly experimental work in progress. The results are shown for your information only. Manually entered settings are not altered by the estimator."
                 vc.contextHelp = commentLine1 + commentLine2 + commentLine3
                 vc.indexPath = indexPath
                 vc.delegate = self
